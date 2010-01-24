@@ -4,26 +4,31 @@ load("util.js");
 
 symbol_locations = { 
   "js_print": "js_io.h",
-  "js_println" : "js_io.h"
+  "js_println" : "js_io.h",
+  "js_print2ln" : "js_io.h"
 };
 
 builtins = { 
   "print" : "js_print",
-  "println" : "js_println"
+  "println" : "js_println",
+  "print2ln" : "js_print2ln"
 }
 
 
-function compile (expr) {
-  var main = wrapMain(compileExpr(expr));
+function compile (prog) {
+  var main = wrapMain(compileProgram(prog));
   var text = main[0];
   var symbols_used = main[1];
 
   var include_text = "";
+  var included_files = {};
   map(symbols_used, 
       function (symbol) {
-	if (symbol_locations[symbol]) {
+	var file = symbol_locations[symbol];
+	if (file != undefined && included_files[file] == undefined) {
 	  include_text += "#include " + 
-	    "\"" + symbol_locations[symbol] + "\"\n";
+	    "\"" + file + "\"\n";
+	  included_files[file] = true;
 	}
       });
 
@@ -35,10 +40,41 @@ function wrapMain (main) {
   var symbols_used = main[1];
   var resultText = 
     "int main() {" + "\n" +
-    "\t" + body +
-    "\t" + "return 0;" + "\n" +
+    body +
+    "return 0;" + "\n" +
     "}";
   return [resultText, symbols_used];
+}
+
+function compileProgram(prog) {
+  if (prog[0] == "do") {
+    return compileDo(prog);
+  } else {
+    return compileStatement(prog);
+  }
+}
+
+function compileDo(prog) {
+  var statements = rest(prog);
+  var resultText = "{\n";
+  var symbolsUsed = [];
+
+  foreach(statements, 
+      function (statement) {
+	var comp = compileStatement(statement);
+	resultText += comp[0];
+	symbolsUsed = symbolsUsed.concat(comp[1]);
+      });
+  resultText += "}\n";
+
+  return [resultText, symbolsUsed];
+}
+
+function compileStatement(prog) {
+  var expr = compileExpr(prog);
+  
+  return [expr[0] + ";\n",
+	  expr[1]];
 }
 
 function compileExpr(expr) {
@@ -53,7 +89,7 @@ function compileExpr(expr) {
   }
   resultString += "(";
   resultString += map(args, compileLiteral).join(",");
-  resultString += ");\n";
+  resultString += ")";
 
   var symbols_used = ["js_" + func];
 
@@ -66,6 +102,10 @@ function compileLiteral(expr) {
   }
 }
 
-program = ["print", ["string", "Hello, world!"]];
-
-print(compile(program));
+hello_world = ["println", ["string", "Hello, world!"]];
+hello_world_2_arg = ["print2ln", ["string", "Hello,"],
+		     ["string", "World!"]];
+multiple_exprs = ["do", 
+		  ["print", ["string", "Hello,"]],
+		  ["print", ["string", " "]],
+		  ["println", ["string", "World!"]]];

@@ -3,9 +3,19 @@ function rest(array) {
 }
 
 function map(array, func) {
-  var result = new Array(array.length);
-  for (x in array) {
+  var len = array.length;
+  var result = new Array(len);
+  var x;
+  for (x = 0; x < len; x++) {
     result[x] = func(array[x]);
   }
   return result;
+}
+
+function foreach(array, func) {
+  var len = array.length;
+  var x;
+  for (x = 0; x < len; x++) {
+    func(array[x]);
+  }
 }
