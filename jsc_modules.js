@@ -23,40 +23,6 @@ Copyright (c) 2010 Tyler Leslie Curtis <ekiru.0@gmail.com>
  OTHER DEALINGS IN THE SOFTWARE.
 */
 
-function rest(array) {
-  return array.slice(1, array.length);
-}
-
-function map(array, func) {
-  var len = array.length;
-  var result = new Array(len);
-  var x;
-  for (x = 0; x < len; x++) {
-    result[x] = func(array[x]);
-  }
-  return result;
-}
-
-function foreach(coll, func) {
-  if (Array.isArray(coll)) {
-    var len = coll.length;
-    var x;
-    for (x = 0; x < len; x++) {
-      func(coll[x]);
-    }
-  } else {
-    var x;
-    for (x in coll) {
-      func(coll[x]);
-    }
-  }
-}
-
-function nconc(arr1, arr2) {
-  arr1.splice.apply(arr1, [arr1.length, 0].concat(arr2));
-  return arr1;
-}
-
-function defined(o) {
-  return o !== undefined;
+function moduleFunction (module, fun) {
+  return module + "_" + fun;
 }

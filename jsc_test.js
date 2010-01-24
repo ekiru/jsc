@@ -32,7 +32,7 @@ var hello_world_result =
   'int main() {\n' + 
   'js_println(js_create_string("Hello, world!"));\n' +
   'return 0;\n' +
-  '}';
+  '}\n';
 function test_hello_world() {
   if (compile(hello_world) == hello_world_result) {
     print("Hello world compiled correctly.");
@@ -49,7 +49,7 @@ var hello_world_2_arg_result =
   'int main() {\n' +
   'js_print2ln(js_create_string("Hello,"),js_create_string("World!"));\n' +
   'return 0;\n' +
-  '}';
+  '}\n';
 function test_hello_world_2_arg() {
   if (compile(hello_world_2_arg) == hello_world_2_arg_result) {
     print("Multiple arguments compiled correctly.");
@@ -70,7 +70,7 @@ var multiple_exprs_result =
   'js_println(js_create_string("World!"));\n' +
   '}\n' +
   'return 0;\n' +
-  '}';
+  '}\n';
 function test_multiple_exprs() {
   if (compile(multiple_exprs) == multiple_exprs_result) {
     print("Multiple expressions compiled correctly.");
@@ -92,7 +92,7 @@ var subexprs_result =
   'js_println(js_create_string("bytes."));\n' +
   '}\n' +
   'return 0;\n' +
-  '}';
+  '}\n';
 function test_subexprs() {
   if (compile(subexprs) == subexprs_result) {
     print("Subexpressions in function arguments compiled correctly.");
@@ -108,9 +108,14 @@ var defun_result =
   '#include "js_io.h"\n' +
   'void user_hello_world();\n' +
   'int main() {\n' +
+  '{\n' +
   'user_hello_world();\n' +
+  '}\n' +
   'return 0;\n' +
-  '}';
+  '}\n' +
+  'void user_hello_world() {\n' +
+  'js_println(js_create_string("Hello, world!"));\n' +
+  '}\n';
 function test_defun() {
   if (compile(defun) == defun_result) {
     print("Nullary function definition compiled correctly.");

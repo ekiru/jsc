@@ -26,12 +26,14 @@ Copyright (c) 2010 Tyler Leslie Curtis <ekiru.0@gmail.com>
 importPackage(java.io, java.lang);
 
 load("jsc_config.js");
+load("jsc_modules.js");
 load("util.js");
 
 
 function compile (prog) {
   var symbols_used = [];
-  var mainText = wrapMain(prog, symbols_used);
+  var functions_defined = {};
+  var main_text = wrapMain(prog, symbols_used, functions_defined);
 
   var include_text = '#include "js_types.h"\n';
   var included_files = { "js_types.h" : true };
@@ -45,34 +47,49 @@ function compile (prog) {
 	}
       });
 
-  return include_text + mainText;
+  var declaration_text = "";
+  var definition_text = "";
+  foreach(functions_defined,
+	  function (func) {
+	    declaration_text += func["declaration"];
+	    definition_text += func["definition"];
+	  });
+
+  return include_text + declaration_text + main_text + definition_text;
 }
 
-function wrapMain (main, symbols_used) {
-  var body = compileProgram(main, symbols_used);
+function wrapMain (main, symbols_used, functions_defined) {
+  var body = compileProgram(main, symbols_used, functions_defined);
   var resultText = 
     "int main() {" + "\n" +
     body +
     "return 0;" + "\n" +
-    "}";
+    "}\n";
   return resultText;
 }
 
-function compileProgram(prog, symbols_used) {
-  if (prog[0] == "do") {
-    return compileDo(prog, symbols_used);
-  } else {
+function compileProgram(prog, symbols_used, functions_defined) {
+  if (!prog) {
+    return "";
+  } else  if (prog[0] == "do") {
+    return compileDo(prog, symbols_used, functions_defined);
+  } else if (prog[0] == "defun") {
+    compileDefun(prog, symbols_used, functions_defined);
+    return "";
+  }
+  else {
     return compileStatement(prog, symbols_used);
   }
 }
 
-function compileDo(prog, symbols_used) {
+function compileDo(prog, symbols_used, functions_defined) {
   var statements = rest(prog);
   var resultText = "{\n";
 
   foreach(statements, 
       function (statement) {
-	var comp = compileStatement(statement, symbols_used);
+	var comp = compileProgram(statement,
+				  symbols_used, functions_defined);
 	resultText += comp;
       });
   resultText += "}\n";
@@ -80,10 +97,29 @@ function compileDo(prog, symbols_used) {
   return resultText;
 }
 
-function compileStatement(prog, symbols_used) {
-  var expr = compileExpr(prog, symbols_used);
+function compileDefun(defun, symbols_used, functions_defined) {
+  var name = moduleFunction("user", defun[1]);
+  if (defined(functions_defined[name])) {
+    throw Error("Multiple definitions of function " + name + ".");
+  }
+  var args = defun[2];
+  var body = defun[3];
+  var signature = 
+    "void " + name +
+    "(" + args.join(",") + ")";
+
+  var declText = signature + ";\n"
+  var defText = 
+    signature + " {\n" +
+    compileProgram(body, symbols_used, functions_defined) +
+    "}\n";
   
-  return expr + ";\n";
+  functions_defined[name] = { "declaration" : declText,
+			      "definition" : defText };
+}
+
+function compileStatement(prog, symbols_used) {
+  return compileExpr(prog, symbols_used) + ";\n";
 }
 
 function compileExpr(expr, symbols_used) {
@@ -96,7 +132,7 @@ function compileExpr(expr, symbols_used) {
       resultString += jsc_builtins[func];
       symbols_used.push(jsc_builtins[func]);
     } else {
-      resultString += "user_" + func;
+      resultString += moduleFunction("user", func);
     }
     resultString += "(";
 
@@ -114,6 +150,8 @@ function compileExpr(expr, symbols_used) {
   } else if (expr[0] == "string") {
     symbols_used.push(jsc_builtins['create_string']);
     return jsc_builtins['create_string'] + '("' + expr[1] + '")';
+  } else {
+    throw TypeError("Invalid expression type.");
   }
 }
 
@@ -132,4 +170,5 @@ subexprs = ["do",
 
 defun = ["do",
 	 ["defun", "hello_world", [], 
-	  ["call", "println", ["string", "Hello, world!"]]]];
+	  ["call", "println", ["string", "Hello, world!"]]],
+	 ["call", "hello_world"]];
