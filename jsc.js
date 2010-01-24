@@ -28,10 +28,17 @@ importPackage(java.io, java.lang);
 load("util.js");
 
 symbol_locations = { 
-  "js_print": "js_io.h",
+  /* Basic type constructors */
+  "js_create_string" : "js_types.h",
+  "js_create_fixnum" : "js_types.h",
+  
+  /* I/O */
+  "js_print" : "js_io.h",
   "js_println" : "js_io.h",
   "js_print2ln" : "js_io.h",
   "js_print_int" : "js_io.h",
+
+  /* String manipulation */
   "js_strlen" : "js_string.h"
 };
 
@@ -49,8 +56,8 @@ function compile (prog) {
   var text = main[0];
   var symbols_used = main[1];
 
-  var include_text = "";
-  var included_files = {};
+  var include_text = '#include "js_types.h"\n';
+  var included_files = { "js_types.h" : true };
   foreach(symbols_used, 
       function (symbol) {
 	var file = symbol_locations[symbol];
@@ -136,7 +143,7 @@ function compileExpr(expr) {
 
     return [resultString, symbols_used];
   } else if (expr[0] == "string") {
-    return ["\"" + expr[1] + "\"", []];
+    return ['js_create_string("' + expr[1] + '")', ["js_create_string"]];
   }
 }
 
@@ -151,4 +158,8 @@ subexprs = ["do",
 	    ["call", "print", ["string", "'Hello world' takes "]],
 	    ["call", "print_int", ["call", "strlen", 
 				   ["string", "Hello world"]]],
-	    ["call", "println", ["string", "bytes."]]]
+	    ["call", "println", ["string", "bytes."]]];
+
+defun = ["do",
+	 ["defun", "hello_world", [], 
+	  ["call", "println", ["string", "Hello, world!"]]]];

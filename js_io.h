@@ -26,29 +26,35 @@ Copyright (c) 2010 Tyler Leslie Curtis <ekiru.0@gmail.com>
 #ifndef JSC_JS_IO_H_
 #define JSC_JS_IO_H_
 
+#include "js_types.h"
+
+#include <assert.h>
 #include <stdio.h>
 
-void js_print(const char *s) 
+void js_print(struct js_value *string) 
 {
-     printf(s);
+     assert(string->type == JS_STRING_TAG);
+     printf(string->string_value->c_str);
 }
 
-void js_println(const char *s) 
+void js_println(struct js_value *string) 
 {
-     printf(s);
+     assert(string->type == JS_STRING_TAG);
+     printf(string->string_value->c_str);
      printf("\n");
 }
 
-void js_print2ln(const char *s1, const char *s2) 
+void js_print2ln(struct js_value *s1, struct js_value *s2) 
 {
      js_print(s1);
-     js_print(" ");
+     js_print(js_create_string(" "));
      js_println(s2);
 }
 
-void js_print_int(int i)
+void js_print_int(struct js_value *i)
 {
-     printf("%d", i);
+     assert(i->type == JS_FIXNUM_TAG);
+     printf("%d", i->fixnum_value);
 }
 
 

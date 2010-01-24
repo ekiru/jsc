@@ -23,19 +23,19 @@ Copyright (c) 2010 Tyler Leslie Curtis <ekiru.0@gmail.com>
  OTHER DEALINGS IN THE SOFTWARE.
 */
 
-#ifndef JSC_JS_STRING_H_
-#define JSC_JS_STRING_H_
+#ifndef JSC_JS_MEMORY_H_
+#define JSC_JS_MEMORY_H_
 
-#include "js_types.h"
+#include <stdlib.h>
 
-#include <assert.h>
-#include <string.h>
-#include <stdio.h>
-
-js_value *js_strlen(struct js_value *string) 
+void *js_malloc(size_t size) 
 {
-     assert(string->type == JS_STRING_TAG);
-     return js_create_fixnum(strlen(string->string_value->c_str));
+     void *mem = malloc(size);
+     if (mem == NULL) {
+	  exit(1);
+     }
+     return mem;
 }
 
-#endif /* JSC_JS_STRING_H_ */
+
+#endif /* JSC_JS_MEMORY_H_ */

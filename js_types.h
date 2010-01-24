@@ -23,19 +23,56 @@ Copyright (c) 2010 Tyler Leslie Curtis <ekiru.0@gmail.com>
  OTHER DEALINGS IN THE SOFTWARE.
 */
 
-#ifndef JSC_JS_STRING_H_
-#define JSC_JS_STRING_H_
+#ifndef JSC_JS_TYPES_H_
+#define JSC_JS_TYPES_H_
 
-#include "js_types.h"
+#include "js_memory.h"
 
-#include <assert.h>
 #include <string.h>
-#include <stdio.h>
 
-js_value *js_strlen(struct js_value *string) 
+enum js_value_type_tag {
+     JS_STRING_TAG,
+     JS_FIXNUM_TAG
+};
+
+struct js_string 
 {
-     assert(string->type == JS_STRING_TAG);
-     return js_create_fixnum(strlen(string->string_value->c_str));
+     int length;
+     char *c_str;
+};
+
+struct js_value 
+{
+     enum js_value_type_tag type;
+     union 
+     {
+	  struct js_string *string_value;
+	  int fixnum_value;
+     };	  
+};
+
+struct js_value *js_create_string(const char *s) 
+{
+     int len = strlen(s);
+     
+     struct js_string *string_v = js_malloc(sizeof(*string_v));
+     string_v->length = len;
+     string_v->c_str = s;
+
+     struct js_value *result = js_malloc(sizeof(*result));
+     result->type = JS_STRING_TAG;
+     result->string_value = string_v;
+     
+     return result;
 }
 
-#endif /* JSC_JS_STRING_H_ */
+struct js_value *js_create_fixnum(int i) 
+{
+     struct js_value *result = js_malloc(sizeof(*result));
+     result->type = JS_FIXNUM_TAG;
+     result->fixnum_value = i;
+     return result;
+}
+
+
+#endif /* JSC_JS_TYPES_H_ */
