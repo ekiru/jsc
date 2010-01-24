@@ -23,29 +23,32 @@ Copyright (c) 2010 Tyler Leslie Curtis <ekiru.0@gmail.com>
  OTHER DEALINGS IN THE SOFTWARE.
 */
 
-function rest(array) {
-  return array.slice(1, array.length);
-}
+jsc_symbol_locations = { 
+  /* Basic type constructors */
+  "js_create_string" : "js_types.h",
+  "js_create_fixnum" : "js_types.h",
+  
+  /* I/O */
+  "js_print" : "js_io.h",
+  "js_println" : "js_io.h",
+  "js_print2ln" : "js_io.h",
+  "js_print_int" : "js_io.h",
 
-function map(array, func) {
-  var len = array.length;
-  var result = new Array(len);
-  var x;
-  for (x = 0; x < len; x++) {
-    result[x] = func(array[x]);
-  }
-  return result;
-}
+  /* String manipulation */
+  "js_strlen" : "js_string.h"
+};
 
-function foreach(array, func) {
-  var len = array.length;
-  var x;
-  for (x = 0; x < len; x++) {
-    func(array[x]);
-  }
-}
+jsc_builtins = { 
+  /* Basic type constructors */
+  "create_string" : "js_create_string",
+  "create_fixnum" : "js_create_fixnum",
 
-function nconc(arr1, arr2) {
-  arr1.splice.apply(arr1, [arr1.length, 0].concat(arr2));
-  return arr1;
+  /* I/O */
+  "print" : "js_print",
+  "println" : "js_println",
+  "print2ln" : "js_print2ln",
+  "print_int" : "js_print_int",
+
+  /* String manipulation */
+  "strlen" : "js_strlen"
 }

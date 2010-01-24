@@ -117,7 +117,7 @@ function test_defun() {
     return true;
   } else {
     print("Nullary function definition failed.");
-    return fasle;
+    return false;
   }
 }
 

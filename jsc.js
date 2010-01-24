@@ -25,42 +25,19 @@ Copyright (c) 2010 Tyler Leslie Curtis <ekiru.0@gmail.com>
 
 importPackage(java.io, java.lang);
 
+load("jsc_config.js");
 load("util.js");
-
-symbol_locations = { 
-  /* Basic type constructors */
-  "js_create_string" : "js_types.h",
-  "js_create_fixnum" : "js_types.h",
-  
-  /* I/O */
-  "js_print" : "js_io.h",
-  "js_println" : "js_io.h",
-  "js_print2ln" : "js_io.h",
-  "js_print_int" : "js_io.h",
-
-  /* String manipulation */
-  "js_strlen" : "js_string.h"
-};
-
-builtins = { 
-  "print" : "js_print",
-  "println" : "js_println",
-  "print2ln" : "js_print2ln",
-  "print_int" : "js_print_int",
-  "strlen" : "js_strlen"
-}
 
 
 function compile (prog) {
-  var main = wrapMain(compileProgram(prog));
-  var text = main[0];
-  var symbols_used = main[1];
+  var symbols_used = [];
+  var mainText = wrapMain(prog, symbols_used);
 
   var include_text = '#include "js_types.h"\n';
   var included_files = { "js_types.h" : true };
   foreach(symbols_used, 
       function (symbol) {
-	var file = symbol_locations[symbol];
+	var file = jsc_symbol_locations[symbol];
 	if (file != undefined && included_files[file] == undefined) {
 	  include_text += "#include " + 
 	    "\"" + file + "\"\n";
@@ -68,63 +45,56 @@ function compile (prog) {
 	}
       });
 
-  return include_text + text;
+  return include_text + mainText;
 }
 
-function wrapMain (main) {
-  var body = main[0];
-  var symbols_used = main[1];
+function wrapMain (main, symbols_used) {
+  var body = compileProgram(main, symbols_used);
   var resultText = 
     "int main() {" + "\n" +
     body +
     "return 0;" + "\n" +
     "}";
-  return [resultText, symbols_used];
+  return resultText;
 }
 
-function compileProgram(prog) {
+function compileProgram(prog, symbols_used) {
   if (prog[0] == "do") {
-    return compileDo(prog);
+    return compileDo(prog, symbols_used);
   } else {
-    return compileStatement(prog);
+    return compileStatement(prog, symbols_used);
   }
 }
 
-function compileDo(prog) {
+function compileDo(prog, symbols_used) {
   var statements = rest(prog);
   var resultText = "{\n";
-  var symbolsUsed = [];
 
   foreach(statements, 
       function (statement) {
-	var comp = compileStatement(statement);
-	resultText += comp[0];
-	symbolsUsed = symbolsUsed.concat(comp[1]);
+	var comp = compileStatement(statement, symbols_used);
+	resultText += comp;
       });
   resultText += "}\n";
 
-  return [resultText, symbolsUsed];
+  return resultText;
 }
 
-function compileStatement(prog) {
-  var expr = compileExpr(prog);
+function compileStatement(prog, symbols_used) {
+  var expr = compileExpr(prog, symbols_used);
   
-  return [expr[0] + ";\n",
-	  expr[1]];
+  return expr + ";\n";
 }
 
-function compileExpr(expr) {
+function compileExpr(expr, symbols_used) {
   if (expr[0] == "call") {
     var resultString = "";
     var func = expr[1];
     var args = rest(rest(expr));
-
     
-    var symbols_used = [];
-    
-    if (builtins[func] !== undefined) {
-      resultString += builtins[func];
-      symbols_used = [builtins[func]];
+    if (jsc_builtins[func] !== undefined) {
+      resultString += jsc_builtins[func];
+      symbols_used.push(jsc_builtins[func]);
     } else {
       resultString += "user_" + func;
     }
@@ -133,17 +103,17 @@ function compileExpr(expr) {
     if (args.length > 0) {
       foreach(args, 
 	      function (arg) {
-		var comp = compileExpr(arg);
-		resultString += comp[0] + ","; 
-		symbols_used = symbols_used.concat(comp[1]);
+		var comp = compileExpr(arg, symbols_used);
+		resultString += comp + ",";
 	      });
       resultString = resultString.substring(0, resultString.length - 1);
     }
     resultString += ")";
 
-    return [resultString, symbols_used];
+    return resultString;
   } else if (expr[0] == "string") {
-    return ['js_create_string("' + expr[1] + '")', ["js_create_string"]];
+    symbols_used.push(jsc_builtins['create_string']);
+    return jsc_builtins['create_string'] + '("' + expr[1] + '")';
   }
 }
 
