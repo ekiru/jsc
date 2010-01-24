@@ -28,6 +28,7 @@ Copyright (c) 2010 Tyler Leslie Curtis <ekiru.0@gmail.com>
 
 #include "js_memory.h"
 
+#include <stdlib.h>
 #include <string.h>
 
 enum js_value_type_tag {
@@ -74,5 +75,17 @@ struct js_value *js_create_fixnum(int i)
      return result;
 }
 
+char js_is_true(struct js_value *value) 
+{
+     if (value == NULL) {
+	  return 0;
+     }
+     switch (value->type) {
+     case JS_STRING_TAG:
+	  return value->string_value->length > 0;
+     case JS_FIXNUM_TAG:
+	  return value->fixnum_value != 0;
+     }
+}
 
 #endif /* JSC_JS_TYPES_H_ */

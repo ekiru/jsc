@@ -70,14 +70,15 @@ function wrapMain (main, symbols_used, functions_defined) {
 
 function compileProgram(prog, symbols_used, functions_defined) {
   if (!prog) {
-    return "";
+    return "{}\n";
   } else  if (prog[0] == "do") {
     return compileDo(prog, symbols_used, functions_defined);
   } else if (prog[0] == "defun") {
     compileDefun(prog, symbols_used, functions_defined);
     return "";
-  }
-  else {
+  } else if (prog[0] == "if") {
+    return compileIf(prog, symbols_used);
+  } else {
     return compileStatement(prog, symbols_used);
   }
 }
@@ -118,41 +119,63 @@ function compileDefun(defun, symbols_used, functions_defined) {
 			      "definition" : defText };
 }
 
+function compileIf(cond, symbols_used) {
+  var condition = cond[1];
+  var thenb = cond[2];
+  var elseb = cond[3];
+
+  symbols_used.push(jsc_builtins["is_true"]);
+  var text = 
+    ("if (" + jsc_builtins["is_true"] + "(" + 
+     compileExpr(condition, symbols_used) + ")) " +
+     compileProgram(thenb, symbols_used, null)) +
+    ("else " + compileProgram(elseb, symbols_used, null));
+
+  return text;
+}
+
 function compileStatement(prog, symbols_used) {
   return compileExpr(prog, symbols_used) + ";\n";
 }
 
 function compileExpr(expr, symbols_used) {
   if (expr[0] == "call") {
-    var resultString = "";
-    var func = expr[1];
-    var args = rest(rest(expr));
-    
-    if (jsc_builtins[func] !== undefined) {
-      resultString += jsc_builtins[func];
-      symbols_used.push(jsc_builtins[func]);
-    } else {
-      resultString += moduleFunction("user", func);
-    }
-    resultString += "(";
-
-    if (args.length > 0) {
-      foreach(args, 
-	      function (arg) {
-		var comp = compileExpr(arg, symbols_used);
-		resultString += comp + ",";
-	      });
-      resultString = resultString.substring(0, resultString.length - 1);
-    }
-    resultString += ")";
-
-    return resultString;
+    return compileCall(expr, symbols_used);
   } else if (expr[0] == "string") {
     symbols_used.push(jsc_builtins['create_string']);
     return jsc_builtins['create_string'] + '("' + expr[1] + '")';
+  } else if (expr[0] == "int") {
+    symbols_used.push(jsc_builtins['create_fixnum']);
+    return jsc_builtins['create_fixnum'] + '(' + expr[1].toString() + ')';
   } else {
     throw TypeError("Invalid expression type.");
   }
+}
+
+function compileCall(expr, symbols_used) {
+var resultString = "";
+ var func = expr[1];
+ var args = rest(rest(expr));
+ 
+ if (jsc_builtins[func] !== undefined) {
+   resultString += jsc_builtins[func];
+   symbols_used.push(jsc_builtins[func]);
+ } else {
+   resultString += moduleFunction("user", func);
+ }
+ resultString += "(";
+ 
+ if (args.length > 0) {
+   foreach(args, 
+	   function (arg) {
+	     var comp = compileExpr(arg, symbols_used);
+	     resultString += comp + ",";
+	   });
+   resultString = resultString.substring(0, resultString.length - 1);
+ }
+ resultString += ")";
+ 
+ return resultString;
 }
 
 hello_world = ["call", "println", ["string", "Hello, world!"]];
@@ -172,3 +195,19 @@ defun = ["do",
 	 ["defun", "hello_world", [], 
 	  ["call", "println", ["string", "Hello, world!"]]],
 	 ["call", "hello_world"]];
+
+int_literal = ["call", "print_int", ["int", 11]];
+
+cond = ["do",
+	["if", ["int", 1],
+	 ["call", "println", ["string", "1 is true."]],
+	 ["call", "println", ["string", "wrong 1 is false."]]],
+	["if", ["int", 0],
+	 ["call", "println", ["string", "wrong 0 is true."]],
+	 ["call", "println", ["string", "0 is false."]]],
+	["if", ["string", ""],
+	 ["call", "println", ["string", "wrong \'\' is true."]],
+	 ["call", "println", ["string", "\'\' is false."]]],
+	["if", ["string", "Hello"],
+	 ["call", "println", ["string", "\'Hello\' is true."]],
+	 ["call", "println", ["string", "wrong \'Hello\' is false."]]]];

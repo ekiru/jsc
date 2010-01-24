@@ -1,5 +1,8 @@
 
 jsc_symbol_locations = { 
+  /* Implementation details */
+  "js_is_true" : "js_types.h",
+
   /* Basic type constructors */
   "js_create_string" : "js_types.h",
   "js_create_fixnum" : "js_types.h",
@@ -15,6 +18,9 @@ jsc_symbol_locations = {
 };
 
 jsc_builtins = { 
+  /* Implementation details */
+  "is_true" : "js_is_true",
+
   /* Basic type constructors */
   "create_string" : "js_create_string",
   "create_fixnum" : "js_create_fixnum",

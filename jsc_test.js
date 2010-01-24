@@ -126,6 +126,53 @@ function test_defun() {
   }
 }
 
+var int_literal_result = 
+  '#include "js_types.h"\n' +
+  '#include "js_io.h"\n' +
+  'int main() {\n' +
+  'js_print_int(js_create_fixnum(11));\n' +
+  'return 0;\n' +
+  '}\n';
+function test_int_literal() {
+  if (compile(int_literal) == int_literal_result) {
+    print("Int literal compiled correctly.");
+    return true;
+  } else {
+    print("Int literal failed.");
+    return false;
+  }
+}
+
+var cond_result =
+  '#include "js_types.h"\n' +
+  '#include "js_io.h"\n' +
+  'int main() {\n' +
+  '{\n' +
+  ('if (js_is_true(js_create_fixnum(1))) ' +
+   'js_println(js_create_string("1 is true."));\n' +
+   'else js_println(js_create_string("wrong 1 is false."));\n') +
+  ('if (js_is_true(js_create_fixnum(0))) ' +
+   'js_println(js_create_string("wrong 0 is true."));\n' +
+   'else js_println(js_create_string("0 is false."));\n') +
+  ('if (js_is_true(js_create_string(""))) ' +
+   'js_println(js_create_string("wrong \'\' is true."));\n' +
+   'else js_println(js_create_string("\'\' is false."));\n') +
+  ('if (js_is_true(js_create_string("Hello"))) ' +
+   'js_println(js_create_string("\'Hello\' is true."));\n' +
+   'else js_println(js_create_string("wrong \'Hello\' is false."));\n') +
+  '}\n' +
+  'return 0;\n' +
+  '}\n';
+function test_cond() {
+  if (compile(cond) == cond_result) {
+    print("Conditionals compiled correctly.");
+    return true;
+  } else {
+    print("Conditionals failed.");
+    return false;
+  }
+}
+
 function test_all() {
   var result = true;
   result = test_hello_world() && result;
@@ -133,6 +180,8 @@ function test_all() {
   result = test_multiple_exprs() && result;
   result = test_subexprs() && result;
   result = test_defun() && result;
+  result = test_int_literal() && result;
+  result = test_cond() && result;
 
   if (result) {
     print("Everything succeeded!");
