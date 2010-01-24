@@ -23,34 +23,15 @@ Copyright (c) 2010 Tyler Leslie Curtis <ekiru.0@gmail.com>
  OTHER DEALINGS IN THE SOFTWARE.
 */
 
-#ifndef JSC_JS_IO_H_
-#define JSC_JS_IO_H_
+#ifndef JSC_JS_STRING_H_
+#define JSC_JS_STRING_H_
 
+#include <string.h>
 #include <stdio.h>
 
-void js_print(const char *s) 
+size_t js_strlen(const char *s) 
 {
-     printf(s);
+     return strlen(s);
 }
 
-void js_println(const char *s) 
-{
-     printf(s);
-     printf("\n");
-}
-
-void js_print2ln(const char *s1, const char *s2) 
-{
-     js_print(s1);
-     js_print(" ");
-     js_println(s2);
-}
-
-void js_print_int(int i)
-{
-     printf("%d", i);
-}
-
-
-
-#endif /* JSC_JS_IO_H_ */
+#endif /* JSC_JS_STRING_H_ */
