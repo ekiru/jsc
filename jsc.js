@@ -107,7 +107,9 @@ function compileDefun(defun, symbols_used, functions_defined) {
   var body = defun[3];
   var signature = 
     "void " + name +
-    "(" + args.join(",") + ")";
+    "(" + map(args, function(str) {
+	return "struct js_value *" + str;
+      }).join(", ") + ")";
 
   var declText = signature + ";\n"
   var defText = 
@@ -144,12 +146,14 @@ function compileExpr(expr, symbols_used, functions_defined) {
     return compileCall(expr, symbols_used, functions_defined);
   case "lambda":
     return compileLambda(expr, symbols_used, functions_defined);
-  case "string":
-    symbols_used.push(jsc_builtins['create_string']);
-    return jsc_builtins['create_string'] + '("' + expr[1] + '")';
   case "int":
     symbols_used.push(jsc_builtins['create_fixnum']);
     return jsc_builtins['create_fixnum'] + '(' + expr[1].toString() + ')';
+  case "string":
+    symbols_used.push(jsc_builtins['create_string']);
+    return jsc_builtins['create_string'] + '("' + expr[1] + '")';
+  case "varget":
+    return expr[1].toString();
   default:
     throw TypeError("Invalid expression type.");
   }
@@ -231,3 +235,12 @@ cond = ["do",
 lambda_usage = ["call", ["lambda", [],
 			 ["call", "println", 
 			  ["string", "Hello, world!"]]]];
+
+defun_args = ["do", 
+	      ["defun", "print_two_things", ["s1", "s2"],
+	       ["do", 
+		["call", "print", ["varget", "s1"]],
+		["call", "println", ["varget", "s2"]]]],
+	      ["call", "print_two_things", 
+	       ["string", "Hello, "],
+	       ["string", "World!"]]];

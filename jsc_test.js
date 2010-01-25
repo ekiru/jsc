@@ -194,6 +194,35 @@ function test_lambda_usage() {
   }
 }
 
+var defun_args_result =
+  '#include "js_types.h"\n' +
+  '#include "js_io.h"\n' +
+  ('void user_print_two_things(struct js_value *s1, ' + 
+   'struct js_value *s2);\n') +
+  'int main() {\n' +
+  '{\n' +
+  ('user_print_two_things(js_create_string("Hello, "),' +
+   'js_create_string("World!"));\n') +
+  '}\n' +
+  'return 0;\n' +
+  '}\n' +
+  ('void user_print_two_things(struct js_value *s1, ' + 
+   'struct js_value *s2) {\n') +
+  '{\n' +
+  'js_print(s1);\n' +
+  'js_println(s2);\n' +
+  '}\n' +
+  '}\n';
+function test_defun_args() {
+  if (compile(defun_args) == defun_args_result) {
+    print("Defun args compiled correctly.");
+    return true;
+  } else {
+    print("Defun args failed.");
+    return false;
+  }
+}
+
 function test_all() {
   var result = true;
   result = test_hello_world() && result;
@@ -204,6 +233,7 @@ function test_all() {
   result = test_int_literal() && result;
   result = test_cond() && result;
   result = test_lambda_usage() && result;
+  result = test_defun_args() && result;
 
   if (result) {
     print("Everything succeeded!");
