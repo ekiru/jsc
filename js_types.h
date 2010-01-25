@@ -52,7 +52,7 @@ struct js_value
      };	  
 };
 
-struct js_value *js_create_string(const char *s) 
+struct js_value *js_create_string(char *s) 
 {
      int len = strlen(s);
      

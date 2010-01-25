@@ -173,6 +173,27 @@ function test_cond() {
   }
 }
 
+var lambda_usage_result =
+  '#include "js_types.h"\n' +
+  '#include "js_io.h"\n' +
+  'void user_lambda_0();\n' +
+  'int main() {\n' +
+  'user_lambda_0();\n' +
+  'return 0;\n' +
+  '}\n' +
+  'void user_lambda_0() {\n' +
+  'js_println(js_create_string("Hello, world!"));\n' +
+  '}\n';
+function test_lambda_usage() {
+  if (compile(lambda_usage) == lambda_usage_result) {
+    print("Nullary lambda compiled correctly.");
+    return true;
+  } else {
+    print("Nullary lambda failed.");
+    return false;
+  }
+}
+
 function test_all() {
   var result = true;
   result = test_hello_world() && result;
@@ -182,6 +203,7 @@ function test_all() {
   result = test_defun() && result;
   result = test_int_literal() && result;
   result = test_cond() && result;
+  result = test_lambda_usage() && result;
 
   if (result) {
     print("Everything succeeded!");

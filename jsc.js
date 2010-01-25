@@ -77,9 +77,9 @@ function compileProgram(prog, symbols_used, functions_defined) {
     compileDefun(prog, symbols_used, functions_defined);
     return "";
   } else if (prog[0] == "if") {
-    return compileIf(prog, symbols_used);
+    return compileIf(prog, symbols_used, functions_defined);
   } else {
-    return compileStatement(prog, symbols_used);
+    return compileStatement(prog, symbols_used, functions_defined);
   }
 }
 
@@ -119,7 +119,7 @@ function compileDefun(defun, symbols_used, functions_defined) {
 			      "definition" : defText };
 }
 
-function compileIf(cond, symbols_used) {
+function compileIf(cond, symbols_used, functions_defined) {
   var condition = cond[1];
   var thenb = cond[2];
   var elseb = cond[3];
@@ -127,36 +127,42 @@ function compileIf(cond, symbols_used) {
   symbols_used.push(jsc_builtins["is_true"]);
   var text = 
     ("if (" + jsc_builtins["is_true"] + "(" + 
-     compileExpr(condition, symbols_used) + ")) " +
-     compileProgram(thenb, symbols_used, null)) +
-    ("else " + compileProgram(elseb, symbols_used, null));
+     compileExpr(condition, symbols_used, functions_defined) + ")) " +
+     compileProgram(thenb, symbols_used, functions_defined)) +
+    ("else " + compileProgram(elseb, symbols_used, functions_defined));
 
   return text;
 }
 
-function compileStatement(prog, symbols_used) {
-  return compileExpr(prog, symbols_used) + ";\n";
+function compileStatement(prog, symbols_used, functions_defined) {
+  return compileExpr(prog, symbols_used, functions_defined) + ";\n";
 }
 
-function compileExpr(expr, symbols_used) {
-  if (expr[0] == "call") {
-    return compileCall(expr, symbols_used);
-  } else if (expr[0] == "string") {
+function compileExpr(expr, symbols_used, functions_defined) {
+  switch (expr[0]) {
+  case "call":
+    return compileCall(expr, symbols_used, functions_defined);
+  case "lambda":
+    return compileLambda(expr, symbols_used, functions_defined);
+  case "string":
     symbols_used.push(jsc_builtins['create_string']);
     return jsc_builtins['create_string'] + '("' + expr[1] + '")';
-  } else if (expr[0] == "int") {
+  case "int":
     symbols_used.push(jsc_builtins['create_fixnum']);
     return jsc_builtins['create_fixnum'] + '(' + expr[1].toString() + ')';
-  } else {
+  default:
     throw TypeError("Invalid expression type.");
   }
 }
 
-function compileCall(expr, symbols_used) {
+function compileCall(expr, symbols_used, functions_defined) {
 var resultString = "";
  var func = expr[1];
  var args = rest(rest(expr));
- 
+ if (Array.isArray(func)) {
+   func = compileExpr(func, symbols_used, functions_defined);
+ }
+
  if (jsc_builtins[func] !== undefined) {
    resultString += jsc_builtins[func];
    symbols_used.push(jsc_builtins[func]);
@@ -168,7 +174,7 @@ var resultString = "";
  if (args.length > 0) {
    foreach(args, 
 	   function (arg) {
-	     var comp = compileExpr(arg, symbols_used);
+	     var comp = compileExpr(arg, symbols_used, functions_defined);
 	     resultString += comp + ",";
 	   });
    resultString = resultString.substring(0, resultString.length - 1);
@@ -176,6 +182,16 @@ var resultString = "";
  resultString += ")";
  
  return resultString;
+}
+
+var lambda_count = 0;
+function compileLambda(lambda, symbols_used, functions_defined) {
+  var name = "lambda_" + lambda_count;
+  lambda_count++;
+  compileDefun(["defun", name, lambda[1],
+		lambda[2]], symbols_used, functions_defined);
+
+  return name;
 }
 
 hello_world = ["call", "println", ["string", "Hello, world!"]];
@@ -211,3 +227,7 @@ cond = ["do",
 	["if", ["string", "Hello"],
 	 ["call", "println", ["string", "\'Hello\' is true."]],
 	 ["call", "println", ["string", "wrong \'Hello\' is false."]]]];
+
+lambda_usage = ["call", ["lambda", [],
+			 ["call", "println", 
+			  ["string", "Hello, world!"]]]];
