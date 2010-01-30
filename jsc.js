@@ -207,7 +207,7 @@ multiple_exprs = ["do",
 		  ["call", "println", ["string", "World!"]]];
 subexprs = ["do", 
 	    ["call", "print", ["string", "'Hello world' takes "]],
-	    ["call", "print_int", ["call", "strlen", 
+	    ["call", "print", ["call", "strlen", 
 				   ["string", "Hello world"]]],
 	    ["call", "println", ["string", "bytes."]]];
 
@@ -216,7 +216,7 @@ defun = ["do",
 	  ["call", "println", ["string", "Hello, world!"]]],
 	 ["call", "hello_world"]];
 
-int_literal = ["call", "print_int", ["int", 11]];
+int_literal = ["call", "println", ["int", 11]];
 
 cond = ["do",
 	["if", ["int", 1],

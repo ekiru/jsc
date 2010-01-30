@@ -31,16 +31,24 @@ Copyright (c) 2010 Tyler Leslie Curtis <ekiru.0@gmail.com>
 #include <assert.h>
 #include <stdio.h>
 
-void js_print(struct js_value *string) 
+void js_print(struct js_value *obj) 
 {
-     assert(string->type == JS_STRING_TAG);
-     printf(string->string_value->c_str);
+     switch (obj->type) {
+     case JS_STRING_TAG:
+	  assert(obj->string_value->length);
+	  printf(obj->string_value->c_str);
+	  break;
+     case JS_FIXNUM_TAG:
+	  printf("%d", obj->fixnum_value);
+	  break;
+     default:
+	  assert(0);
+     }
 }
 
-void js_println(struct js_value *string) 
+void js_println(struct js_value *obj) 
 {
-     assert(string->type == JS_STRING_TAG);
-     printf(string->string_value->c_str);
+     js_print(obj);
      printf("\n");
 }
 
@@ -49,12 +57,6 @@ void js_print2ln(struct js_value *s1, struct js_value *s2)
      js_print(s1);
      js_print(js_create_string(" "));
      js_println(s2);
-}
-
-void js_print_int(struct js_value *i)
-{
-     assert(i->type == JS_FIXNUM_TAG);
-     printf("%d", i->fixnum_value);
 }
 
 
