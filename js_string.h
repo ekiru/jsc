@@ -35,7 +35,7 @@ Copyright (c) 2010 Tyler Leslie Curtis <ekiru.0@gmail.com>
 js_value *js_strlen(struct js_value *string) 
 {
      assert(string->type == JS_STRING_TAG);
-     return js_create_fixnum(strlen(string->string_value->c_str));
+     return js_create_fixnum(string->string_value->length);
 }
 
 #endif /* JSC_JS_STRING_H_ */
