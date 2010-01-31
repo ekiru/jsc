@@ -161,6 +161,8 @@ function compileExpr(expr, symbols_used, functions_defined, scope) {
     case "string":
 	symbols_used.push(jsc_builtins['create_string']);
 	return jsc_builtins['create_string'] + '("' + expr[1] + '")';
+    case "assign":
+	return compileAssign(expr, symbols_used, functions_defined, scope);
     case "varget":
 	if (scope.binds(expr[1])) {
 	    return expr[1].toString();
@@ -168,10 +170,20 @@ function compileExpr(expr, symbols_used, functions_defined, scope) {
 	    throw Error("Variable " + expr[1] + " not bound.");
 	}
     default:
-	throw TypeError("Invalid expression type.");
+	throw TypeError("Invalid expression type: " + expr + ".");
     }
 }
 
+function compileAssign(expr, symbols_used, functions_defined, scope) {
+    var assign = expr[1] + " = " + compileExpr(expr[2], symbols_used, 
+					       functions_defined, scope);
+    if (scope.binds(expr[1])) {
+	return assign;
+    } else {
+	scope.bind(expr[1]);
+	return "struct js_value *" + assign;
+    }
+}
 function compileCall(expr, symbols_used, functions_defined, scope) {
     var resultString = "";
     var func = expr[1];
@@ -259,7 +271,7 @@ defun_args = ["do",
 	       ["string", "World!"]]];
 
 assignment = ["do",
-	      ["assign", "f", ["fixnum", 5]]
+	      ["assign", "f", ["int", 5]],
 	      ["call", "println", ["varget", "f"]],
 	      ["assign", "f", ["string", "Hello, there."]],
 	      ["call", "println", ["varget", "f"]]]
