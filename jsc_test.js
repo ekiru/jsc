@@ -223,6 +223,28 @@ function test_defun_args() {
   }
 }
 
+var assignment_result = 
+    '#include "js_types.h"\n' +
+    '#include "js_io.h"\n' +
+    'int main() {\n' +
+    '{\n' +
+    'struct js_value *f = js_create_fixnum(5);\n' +
+    'js_println(f);\n' +
+    'f = js_create_string("Hello, there.");\n' +
+    'js_println(f);\n' +
+    '}\n' +
+    'return 0;\n' +
+    '}\n';
+function test_assignment() {
+    if (compile(assignment) == assignment_result) {
+	print("Assignment compiled correctly.");
+	return true;
+    } else {
+	print("Assignment failed.");
+	return false;
+    }
+}
+
 function test_all() {
   var result = true;
   result = test_hello_world() && result;
@@ -234,6 +256,7 @@ function test_all() {
   result = test_cond() && result;
   result = test_lambda_usage() && result;
   result = test_defun_args() && result;
+  result = test_assignment() && result;
 
   if (result) {
     print("Everything succeeded!");
