@@ -88,7 +88,7 @@ var subexprs_result =
   'int main() {\n' +
   '{\n' +
   'js_print(js_create_string("\'Hello world\' takes "));\n' +
-  'js_print_int(js_strlen(js_create_string("Hello world")));\n' +
+  'js_print(js_strlen(js_create_string("Hello world")));\n' +
   'js_println(js_create_string("bytes."));\n' +
   '}\n' +
   'return 0;\n' +
@@ -130,7 +130,7 @@ var int_literal_result =
   '#include "js_types.h"\n' +
   '#include "js_io.h"\n' +
   'int main() {\n' +
-  'js_print_int(js_create_fixnum(11));\n' +
+  'js_println(js_create_fixnum(11));\n' +
   'return 0;\n' +
   '}\n';
 function test_int_literal() {

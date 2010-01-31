@@ -27,14 +27,16 @@ importPackage(java.io, java.lang);
 
 load("jsc_config.js");
 load("jsc_modules.js");
+load("jsc_scopes.js");
 load("util.js");
 
 
 function compile (prog) {
     var symbols_used = [];
     var functions_defined = {};
-    var main_text = wrapMain(prog, symbols_used, functions_defined);
-
+    var globalScope = new Scope(null);
+    var main_text = wrapMain(prog, symbols_used, functions_defined, globalScope);
+    
     var include_text = '#include "js_types.h"\n';
     var included_files = { "js_types.h" : true };
     foreach(symbols_used, 
@@ -47,6 +49,7 @@ function compile (prog) {
 		}
 	    });
 
+
     var declaration_text = "";
     var definition_text = "";
     foreach(functions_defined,
@@ -58,8 +61,8 @@ function compile (prog) {
     return include_text + declaration_text + main_text + definition_text;
 }
 
-function wrapMain (main, symbols_used, functions_defined) {
-    var body = compileProgram(main, symbols_used, functions_defined);
+function wrapMain (main, symbols_used, functions_defined, scope) {
+    var body = compileProgram(main, symbols_used, functions_defined, scope);
     var resultText = 
 	"int main() {" + "\n" +
 	body +
@@ -68,29 +71,29 @@ function wrapMain (main, symbols_used, functions_defined) {
     return resultText;
 }
 
-function compileProgram(prog, symbols_used, functions_defined) {
+function compileProgram(prog, symbols_used, functions_defined, scope) {
     if (!prog) {
 	return "{}\n";
     } else  if (prog[0] == "do") {
-	return compileDo(prog, symbols_used, functions_defined);
+	return compileDo(prog, symbols_used, functions_defined, scope);
     } else if (prog[0] == "defun") {
-	compileDefun(prog, symbols_used, functions_defined);
+	compileDefun(prog, symbols_used, functions_defined, scope);
 	return "";
     } else if (prog[0] == "if") {
-	return compileIf(prog, symbols_used, functions_defined);
+	return compileIf(prog, symbols_used, functions_defined, scope);
     } else {
-	return compileStatement(prog, symbols_used, functions_defined);
+	return compileStatement(prog, symbols_used, functions_defined, scope);
     }
 }
 
-function compileDo(prog, symbols_used, functions_defined) {
+function compileDo(prog, symbols_used, functions_defined, scope) {
     var statements = rest(prog);
     var resultText = "{\n";
 
     foreach(statements, 
 	    function (statement) {
 		var comp = compileProgram(statement,
-					  symbols_used, functions_defined);
+					  symbols_used, functions_defined, scope);
 		resultText += comp;
 	    });
     resultText += "}\n";
@@ -98,12 +101,18 @@ function compileDo(prog, symbols_used, functions_defined) {
     return resultText;
 }
 
-function compileDefun(defun, symbols_used, functions_defined) {
+function compileDefun(defun, symbols_used, functions_defined, scope) {
+    var internalScope = new Scope(scope);
+
     var name = moduleFunction("user", defun[1]);
     if (defined(functions_defined[name])) {
 	throw Error("Multiple definitions of function " + name + ".");
     }
     var args = defun[2];
+    foreach(args, function (arg) {
+	    internalScope.bind(arg);
+	});
+
     var body = defun[3];
     var signature = 
 	"void " + name +
@@ -114,14 +123,14 @@ function compileDefun(defun, symbols_used, functions_defined) {
     var declText = signature + ";\n"
 	var defText = 
 	signature + " {\n" +
-	compileProgram(body, symbols_used, functions_defined) +
+	compileProgram(body, symbols_used, functions_defined, internalScope) +
 	"}\n";
   
     functions_defined[name] = { "declaration" : declText,
 				"definition" : defText };
 }
 
-function compileIf(cond, symbols_used, functions_defined) {
+function compileIf(cond, symbols_used, functions_defined, scope) {
     var condition = cond[1];
     var thenb = cond[2];
     var elseb = cond[3];
@@ -129,23 +138,23 @@ function compileIf(cond, symbols_used, functions_defined) {
     symbols_used.push(jsc_builtins["is_true"]);
     var text = 
 	("if (" + jsc_builtins["is_true"] + "(" + 
-	 compileExpr(condition, symbols_used, functions_defined) + ")) " +
-	 compileProgram(thenb, symbols_used, functions_defined)) +
-	("else " + compileProgram(elseb, symbols_used, functions_defined));
+	 compileExpr(condition, symbols_used, functions_defined, scope) + ")) " +
+	 compileProgram(thenb, symbols_used, functions_defined, scope)) +
+	("else " + compileProgram(elseb, symbols_used, functions_defined, scope));
 
     return text;
 }
 
-function compileStatement(prog, symbols_used, functions_defined) {
-    return compileExpr(prog, symbols_used, functions_defined) + ";\n";
+function compileStatement(prog, symbols_used, functions_defined, scope) {
+    return compileExpr(prog, symbols_used, functions_defined, scope) + ";\n";
 }
 
-function compileExpr(expr, symbols_used, functions_defined) {
+function compileExpr(expr, symbols_used, functions_defined, scope) {
     switch (expr[0]) {
     case "call":
-	return compileCall(expr, symbols_used, functions_defined);
+	return compileCall(expr, symbols_used, functions_defined, scope);
     case "lambda":
-	return compileLambda(expr, symbols_used, functions_defined);
+	return compileLambda(expr, symbols_used, functions_defined, scope);
     case "int":
 	symbols_used.push(jsc_builtins['create_fixnum']);
 	return jsc_builtins['create_fixnum'] + '(' + expr[1].toString() + ')';
@@ -153,18 +162,22 @@ function compileExpr(expr, symbols_used, functions_defined) {
 	symbols_used.push(jsc_builtins['create_string']);
 	return jsc_builtins['create_string'] + '("' + expr[1] + '")';
     case "varget":
-	return expr[1].toString();
+	if (scope.binds(expr[1])) {
+	    return expr[1].toString();
+	} else {
+	    throw Error("Variable " + expr[1] + " not bound.");
+	}
     default:
 	throw TypeError("Invalid expression type.");
     }
 }
 
-function compileCall(expr, symbols_used, functions_defined) {
+function compileCall(expr, symbols_used, functions_defined, scope) {
     var resultString = "";
     var func = expr[1];
     var args = rest(rest(expr));
     if (Array.isArray(func)) {
-	func = compileExpr(func, symbols_used, functions_defined);
+	func = compileExpr(func, symbols_used, functions_defined, scope);
     }
 
     if (jsc_builtins[func] !== undefined) {
@@ -178,7 +191,7 @@ function compileCall(expr, symbols_used, functions_defined) {
     if (args.length > 0) {
 	foreach(args, 
 		function (arg) {
-		    var comp = compileExpr(arg, symbols_used, functions_defined);
+		    var comp = compileExpr(arg, symbols_used, functions_defined, scope);
 		    resultString += comp + ",";
 		});
 	resultString = resultString.substring(0, resultString.length - 1);
@@ -189,11 +202,11 @@ function compileCall(expr, symbols_used, functions_defined) {
 }
 
 var lambda_count = 0;
-function compileLambda(lambda, symbols_used, functions_defined) {
+function compileLambda(lambda, symbols_used, functions_defined, scope) {
     var name = "lambda_" + lambda_count;
     lambda_count++;
     compileDefun(["defun", name, lambda[1],
-		  lambda[2]], symbols_used, functions_defined);
+		  lambda[2]], symbols_used, functions_defined, scope);
 
     return name;
 }
@@ -207,8 +220,8 @@ multiple_exprs = ["do",
 		  ["call", "println", ["string", "World!"]]];
 subexprs = ["do", 
 	    ["call", "print", ["string", "'Hello world' takes "]],
-	    ["call", "print_int", ["call", "strlen", 
-				   ["string", "Hello world"]]],
+	    ["call", "print", ["call", "strlen", 
+			       ["string", "Hello world"]]],
 	    ["call", "println", ["string", "bytes."]]];
 
 defun = ["do",
@@ -216,7 +229,7 @@ defun = ["do",
 	  ["call", "println", ["string", "Hello, world!"]]],
 	 ["call", "hello_world"]];
 
-int_literal = ["call", "print_int", ["int", 11]];
+int_literal = ["call", "println", ["int", 11]];
 
 cond = ["do",
 	["if", ["int", 1],
