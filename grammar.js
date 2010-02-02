@@ -39,11 +39,31 @@ var reservedWordList = [
     "break", "case", "catch", "continue", "debugger", "default", "delete",
     "do", "else", "finally", "for", "function", "if", "in",
     "instanceof", "new", "return", "switch", "this", "throw", "try",
-    "typeof", "var", "void", "while", "with"
+    "typeof", "var", "void", "while", "with",
+    // Future reserved words
+    "class", "const", "enum", "export", "extends", "import", "super",
+    // Strict mode future reserved words
+    "implements", "interface", "let", "package",
+    "private", "protected", "public", "static", "yield",
+    // Null literal
+    "null",
+    // Boolean literal
+    "true", "false"
     ];
 
 var reservedWordLexicalGrammar = reservedWordList.map(function (word) {
-	return new TokenDef(RegExp(word), TokenDef.identity);
+	return (new TokenDef(RegExp(word), TokenDef.identity));
     });
 
-var lexicalGrammar = commentLexicalGrammar.concat(reservedWordLexicalGrammar);
+var identifierRegex = 
+    /([\w$_]|(\\u[0-9A-Fa-f]{4}))(([\w$_\d]|(\\u[0-9A-Fa-f]{4})))*/;
+
+var identifierLexicalGrammar = [
+    new TokenDef(identifierRegex, function (string) {
+	    return ["ident", string];
+	})
+    ];
+
+var lexicalGrammar = commentLexicalGrammar.
+    concat(reservedWordLexicalGrammar).
+    concat(identifierLexicalGrammar);
