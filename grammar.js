@@ -56,7 +56,7 @@ var reservedWordLexicalGrammar = reservedWordList.map(function (word) {
     });
 
 var identifierRegex = 
-    /([\w$_]|(\\u[0-9A-Fa-f]{4}))(([\w$_\d]|(\\u[0-9A-Fa-f]{4})))*/;
+    /([A-Za-z$_]|(\\u[0-9A-Fa-f]{4}))(([\w$_\d]|(\\u[0-9A-Fa-f]{4})))*/;
 
 var identifierLexicalGrammar = [
     new TokenDef(identifierRegex, function (string) {
@@ -64,6 +64,51 @@ var identifierLexicalGrammar = [
 	})
     ];
 
+var decimalLiteral =
+    /[-+]?(([0-9]+\.[0-9]*)|(\.[0-9]+)|([0-9]+))((e|E)([-+]?[0-9]+))?/;
+
+var hexIntegerLiteral =
+    /0x[0-9a-fA-F]+/;
+
+var numericLiteralRegex = 
+    RegExp('(' + decimalLiteral.source + ')|(' + hexIntegerLiteral.source +')');
+
+var doubleQuoteStringLiteralRegex = 
+    /\"([^\\\"]|(\\(0|(u[0-9A-Fa-f]{4})|(x[0-9A-Fa-f]{2})|.)))*\"/;
+
+var singleQuoteStringLiteralRegex =
+    /\'([^\\\']|(\\(0|(u[0-9A-Fa-f]{4})|(x[0-9A-Fa-f]{2})|.)))*\'/;
+
+var regularExpressionRegex =
+    /\/([^*\\/\[])?([^\\/\[]|(\\.)|(\[([^\]\\]|(\\.))*\]))*\/[a-zA-Z]*/;
+
+var literalLexicalGrammar = [
+    new TokenDef(numericLiteralRegex, function (string) {
+	    return ["number", parseFloat(string)];
+	}),
+    new TokenDef(doubleQuoteStringLiteralRegex, TokenDef.identity),
+    new TokenDef(singleQuoteStringLiteralRegex, TokenDef.identity),
+    new TokenDef(regularExpressionRegex, TokenDef.identity)
+    ];
+
+var punctuators = [
+    /\{/, /\}/, /\(/, /\)/, /\[/, /\]/,
+    /\./, /;/, /,/, /</, />/, /<=/, />=/,
+    /==/, /!=/, /===/, /!==/,
+    /\+/, /-/, /\*/, /\//, /%/,
+    /\+=/, /-=/, /\*=/, /\/=/, /%=/,
+    /\++/, /--/, /<</, />>/, />>>/,
+    /&/, /|/, /^/, /!/, /~/,
+    /&&/, /||/, /\?/, /:/, /=/,
+    /<<=/, />>=/, />>>=/, /&=/, /|=/, /^=/
+    ];
+
+var punctuatorLexicalGrammar = punctuators.map(function (symb) {
+	return new TokenDef(symb, TokenDef.identity);
+    });
+
 var lexicalGrammar = commentLexicalGrammar.
     concat(reservedWordLexicalGrammar).
-    concat(identifierLexicalGrammar);
+    concat(identifierLexicalGrammar).
+    concat(literalLexicalGrammar).
+    concat(punctuatorLexicalGrammar);
