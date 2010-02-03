@@ -164,18 +164,17 @@ PrimaryExpression ::=
 |   '(' Expression ')
 
 ArrayLiteral ::=
-    '[' Elision? ']'
-|   '[' ElementList ']'
-|   '[' ElementList ',' Elision? ']
-
-ElementList ::=
-    Elision AssignmentExpression ElementListRest
-|   AssignmentExpression ElementListRest
+    '[' ']'
+|   '[' Elision ']'
+|   '[' Elision AssignmentExpression ElementListRest ']'
+|   '[' AssignmentExpression ElementListRest ']'
 
 ElementListRest ::=
     empty
 |   ',' Elision AssignmentExpression ElementListRest
 |   ',' AssignmentExpression ElementListRest
+|   ','
+|   ',' Elision
 
 Elision ::=
     ',' ElisionRest
@@ -416,7 +415,6 @@ ConditionalExpressionNoIn ::=
     LogicalOrExpressionNoIn
 |   LogicalOrExpressionNoIn '?' AssignmentExpressionNoIn 
 	':' AssignmentExpressionNoIn
-
 
 AssignmentExpression ::=
     ConditionalExpression
