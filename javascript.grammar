@@ -1,8 +1,12 @@
-Program ::= SourceElements?
+Program ::= 
+    SourceElements
 
-SourceElements ::= 
-    SourceElement
-|   SourceElements SourceElement
+SourceElements ::=
+    SourceElement SourceElementsRest
+
+SourceElementsRest ::= 
+    empty
+|   SourceElement SourceElementsRest
 
 SourceElement ::= 
     Statement
@@ -15,8 +19,11 @@ FunctionExpression ::=
     'function' Identifier? '(' FormalParameterList? ')' '{' FunctionBody '}'
 
 FormalParameterList ::=
-    Identifier
-|   FormalParameterList ',' Identifier
+    Identifier FormalParameterListRest
+
+FormalParameterListRest ::=
+    empty
+|   ',' Identifier FormalParameterListRest
 
 FunctionBody ::=
     SourceElements?
@@ -26,7 +33,6 @@ Statement ::=
 |   VariableStatement
 |   EmptyStatement
 |   ExpressionStatement
-|   IfStatement
 |   IfStatement
 |   IterationStatement
 |   ContinueStatement
@@ -43,19 +49,28 @@ Block ::=
     '{' StatementList? '}'
 
 StatementList ::=
-    Statement
-|   StatementList Statement
+    Statement StatementListRest
+
+StatementListRest ::=
+    empty
+|   Statement StatementListRest
 
 VariableStatement ::=
     'var' VariableDeclarationList ';'
 
 VariableDeclarationList ::=
-    VariableDeclaration
-|   VariableDeclarationList ',' VariableDeclaration
+    VariableDeclaration VariableDeclarationListRest
+
+VariableDeclarationListRest ::=
+    empty
+|   VariableDeclaration VariableDeclarationListRest
 
 VariableDeclarationListNoIn ::=
-    VariableDeclarationNoIn
-|   VariableDeclarationListNoIn ',' VariableDeclarationNoIn
+    VariableDeclarationNoIn VariableDeclarationNoInRest
+
+VariableDeclarationListNoInRest ::=
+    empty
+|   ',' VariableDeclarationNoIn VariableDeclarationNoInRest
 
 VariableDeclaration ::=
     Identifier Initialiser?
@@ -108,8 +123,11 @@ CaseBlock ::=
 |   '{' CaseClauses? DefaultClause CaseClauses? '}'
 
 CaseClauses ::=
-    CaseClause
-|   CaseClauses CaseClause
+    CaseClause CaseClausesRest
+
+CaseClausesRest ::=
+    empty
+|   CaseClause CaseClausesRest
 
 CaseClause ::=
     'case' Expression ':' StatementList?
@@ -135,7 +153,7 @@ Finally ::=
     'finally' Block
 
 DebuggerStatement ::=
-    Debugger ';'
+    'debugger' ';'
 
 PrimaryExpression ::=
     'this'
@@ -151,12 +169,20 @@ ArrayLiteral ::=
 |   '[' ElementList ',' Elision? ']
 
 ElementList ::=
-    Elision? AssignmentExpression
-|   ElementList ',' Elision? AssignmentExpression
+    Elision AssignmentExpression ElementListRest
+|   AssignmentExpression ElementListRest
+
+ElementListRest ::=
+    empty
+|   ',' Elision AssignmentExpression ElementListRest
+|   ',' AssignmentExpression ElementListRest
 
 Elision ::=
-    ','
-|   Elision ','
+    ',' ElisionRest
+
+ElisionRest ::=
+    empty
+|   ',' ElisionRest
 
 ObjectLiteral ::=
     '{' '}'
@@ -164,8 +190,12 @@ ObjectLiteral ::=
 |   '{' PropertyNameAndValueList ',' '}'
 
 PropertyNameAndValueList ::=
-    PropertyAssignment
+    PropertyAssignment PropertyNameAndValueListRest
 |   PropertyNameAndValueList ',' PropertyAssignment
+
+PropertyNameAndValueListRest ::=
+    empty
+|   ',' PropertyAssignment PropertyNameAndValueListRest
 
 PropertyAssignment ::=
     PropertyName ':' AssignmentExpression
@@ -181,21 +211,31 @@ PropertySetParameterList ::=
     Identifier
 
 MemberExpression ::=
-    PrimaryExpression
-|   FunctionExpression
-|   MemberExpression '[' Expression ']'
-|   MemberExpression '.' IdentifierName
-|   'new' MemberExpression Arguments
+    PrimaryExpression MemberExpressionRest
+|   FunctionExpression MemberExpressionRest
+|   'new' MemberExpression Arguments MemberExpressionRest
+|   'new' MemberExpression MemberExpressionRest
+
+MemberExpressionRest ::=
+    empty
+|   '[' Expression ']' MemberExpressionRest
+|   '.' IdentifierName MemberExpressionRest
 
 NewExpression ::=
     MemberExpression
 |   'new' NewExpression
 
 CallExpression ::=
-    MemberExpression Arguments
+    MemberExpression Arguments CallExpressionRest
 |   CallExpression Arguments
 |   CallExpression '[' Expression ']
 |   CallExpression '.' IdentifierName
+
+CallExpressionRest ::=
+    empty
+|   Arguments CallExpressionRest
+|   '[' Expression ']' CallExpressionRest
+|   '.' IdentifierName CallExpressionRest
 
 Arguments ::=
     '(' ')'
@@ -203,7 +243,10 @@ Arguments ::=
 
 ArgumentList ::=
     AssignmentExpression
-|   ArgumentList ',' AssignmentExpression
+
+ArgumentListRest ::=
+    empty
+|   ',' AssignmentExpression ArgumentListRest
 
 LeftHandSideExpression ::=
     NewExpression
@@ -227,92 +270,143 @@ UnaryExpression ::=
 |   '!' UnaryExpression
 
 MultiplicativeExpression ::=
-    UnaryExpression
-|   MultiplicativeExpression '*' UnaryExpression
-|   MultiplicativeExpression '/' UnaryExpression
-|   MultiplicativeExpression '%' UnaryExpression
+    UnaryExpression MultiplicativeExpressionRest
+
+MultiplicativeExpressionRest ::=
+    empty
+|   '*' UnaryExpression MultiplicativeExpressionRest
+|   '/' UnaryExpression MultiplicativeExpressionRest
+|   '%' UnaryExpression MultiplicativeExpressionRest
 
 AdditiveExpression ::=
-    MultiplicativeExpression
-|   AdditiveExpression '+' MultiplicativeExpression
-|   AdditiveExpression '-' MultiplicativeExpression
+    MultiplicativeExpression AdditiveExpressionRest
+
+AdditiveExpressionRest ::=
+    empty
+|   '+' MultiplicativeExpression AdditiveExpressionRest
+|   '-' MultiplicativeExpression AdditiveExpressionRest
 
 ShiftExpression ::=
-    AdditiveExpression
-|   ShiftExpression '<<' AdditiveExpression
-|   ShiftExpression '>>' AdditiveExpression
-|   ShiftExpression '>>>' AdditiveExpression
+    AdditiveExpression ShiftExpressionRest
+
+ShiftExpressionRest ::=
+    empty
+|   '<<' AdditiveExpression ShiftExpressionRest
+|   '>>' AdditiveExpression ShiftExpressionRest
+|   '>>>' AdditiveExpression ShiftExpressionRest
 
 RelationalExpression ::=
-    ShiftExpression
-|   RelationalExpression '<' ShiftExpression
-|   RelationalExpression '>' ShiftExpression
-|   RelationalExpression '<=' ShiftExpression
-|   RelationalExpression '>=' ShiftExpression
-|   RelationalExpression 'instanceof' ShiftExpression
-|   RelationalExpression 'in' ShiftExpression
+    ShiftExpression RelationalExpressionRest
+
+RelationalExpressionRest ::=
+    empty
+|   '<' ShiftExpression RelationalExpressionRest
+|   '>' ShiftExpression RelationalExpressionRest
+|   '<=' ShiftExpression RelationalExpressionRest
+|   '>=' ShiftExpression RelationalExpressionRest
+|   'instanceof' ShiftExpression RelationalExpressionRest
+|   'in' ShiftExpression RelationalExpressionRest
 
 RelationalExpressionNoIn ::=
-    ShiftExpression
-|   RelationalExpression '<' ShiftExpression
-|   RelationalExpression '>' ShiftExpression
-|   RelationalExpression '<=' ShiftExpression
-|   RelationalExpression '>=' ShiftExpression
-|   RelationalExpression 'instanceof' ShiftExpression
+    ShiftExpression RelationalExpressionNoInRest
+
+RelationalExpressionNoInRest ::=
+    empty
+|   '<' ShiftExpression RelationalExpressionNoInRest
+|   '>' ShiftExpression RelationalExpressionNoInRest
+|   '<=' ShiftExpression RelationalExpressionNoInRest
+|   '>=' ShiftExpression RelationalExpressionNoInRest
+|   'instanceof' ShiftExpression RelationalExpressionNoInRest
 
 EqualityExpression ::=
-    RelationalExpression
-|   EqualityExpression '==' RelationalExpression
-|   EqualityExpression '!=' RelationalExpression
-|   EqualityExpression '===' RelationalExpression
-|   EqualityExpression '!==' RelationalExpression
+    RelationalExpression EqualityExpressionRest
+
+EqualityExpressionRest ::=
+    emtpy
+|   '==' RelationalExpression EqualityExpressionRest
+|   '!=' RelationalExpression EqualityExpressionRest
+|   '===' RelationalExpression EqualityExpressionRest
+|   '!==' RelationalExpression EqualityExpressionRest
 
 EqualityExpressionNoIn ::=
-    RelationalExpressionNoIn
-|   EqualityExpressionNoIn '==' RelationalExpressionNoIn
-|   EqualityExpressionNoIn '!=' RelationalExpressionNoIn
-|   EqualityExpressionNoIn '===' RelationalExpressionNoIn
-|   EqualityExpressionNoIn '!==' RelationalExpressionNoIn
+    RelationalExpressionNoIn EqualityExpressionNoInRest
+
+EqualityExpressionNoInRest ::=
+    empty
+|   '==' RelationalExpressionNoIn EqualityExpressionNoInRest
+|   '!=' RelationalExpressionNoIn EqualityExpressionNoInRest
+|   '===' RelationalExpressionNoIn EqualityExpressionNoInRest
+|   '!==' RelationalExpressionNoIn EqualityExpressionNoInRest
 
 BitwiseAndExpression ::=
-    EqualityExpression
-|   BitwiseAndExpression '&' EqualityExpression
+    EqualityExpression BitwiseAndExpressionRest
+
+BitwiseAndExpressionRest ::=
+    empty
+|   '&' EqualityExpression BitwiseAndExpressionRest
 
 BitwiseAndExpressionNoIn ::=
-    EqualityExpressionNoIn
-|   BitwiseAndExpressionNoIn '&' EqualityExpressionNoIn
+    EqualityExpressionNoIn BitwiseAndExpressionNoInRest
+
+BitwiseAndExpressionNoInRest ::=
+    empty
+|   '&' EqualityExpressionNoIn BitwiseAndExpressionNoInRest
 
 BitwiseXorExpression ::=
-    BitwiseAndExpression
-|   BitwiseXorExpression '^' BitwiseAndExpression
+    BitwiseAndExpression BitwiseXorExpressionRest
+
+BitwiseXorExpressionRest ::=
+    empty
+|   '^' BitwiseAndExpression BitwiseXorExpressionRest
 
 BitwiseXorExpressionNoIn ::=
-    BitwiseAndExpressionNoIn
-|   BitwiseXorExpressionNoIn '^' BitwiseAndExpressionNoIn
+    BitwiseAndExpressionNoIn BitwiseXorExpressionNoInRest
+
+BitwiseXorExpressionNoInRest ::=
+    empty
+|   '^' BitwiseAndExpressionNoIn BitwiseXorExpressionNoInRest
 
 BitwiseOrExpression ::=
-    BitwiseXorExpression
-|   BitwiseOrExpression '|' BitwiseXorExpression
+    BitwiseXorExpression BitwiseOrExpressionRest
+
+BitwiseOrExpressionRest ::=
+    empty
+|   '|' BitwiseXorExpression BitwiseOrExpressionRest
 
 BitwiseOrExpressionNoIn ::=
-    BitwiseXorExpressionNoIn
-|   BitwiseOrExpressionNoIn '|' BitwiseXorExpressionNoIn
+    BitwiseXorExpressionNoIn BitwiseOrExpressionNoInRest
+
+BitwiseOrExpressionNoInRest ::=
+    empty
+|   '|' BitwiseXorExpressionNoIn BitwiseOrExpressionNoInRest
 
 LogicalAndExpression ::=
-    BitwiseOrExpression
-|   LogicalAndExpression '&&' BitwiseOrExpression
+    BitwiseOrExpression LogicalAndExpressionRest
+
+LogicalAndExpressionRest ::=
+    empty
+|   '&&' BitwiseOrExpression LogicalAndExpressionRest
 
 LogicalAndExpressionNoIn ::=
-    BitwiseOrExpressionNoIn
-|   LogicalAndExpressionNoIn '&&' BitwiseOrExpression
+    BitwiseOrExpressionNoIn LogicalAndExpressionNoInRest
+
+LogicalAndExpressionNoInRest ::=
+    empty
+|   '&&' BitwiseOrExpression LogicalAndExpressionNoInRest
 
 LogicalOrExpression ::=
-    LogicalAndExpression
-|   LogicalOrExpression '||' LogicalAndExpression
+    LogicalAndExpression LogicalOrExpressionRest
+
+LogicalOrExpressionRest ::=
+    empty
+|   '||' LogicalAndExpression LogicalOrExpressionRest
 
 LogicalOrExpressionNoIn ::=
-    LogicalAndExpressionNoIn
-|   LogicalOrExpressionNoIn '||' LogicalAndExpressionNoIn
+    LogicalAndExpressionNoIn LogicalOrExpressionNoInRest
+
+LogicalOrExpressionNoInRest ::=
+    empty
+|   '||' LogicalAndExpressionNoIn LogicalOrExpressionNoInRest
 
 ConditionalExpression ::=
     LogicalOrExpression
@@ -337,9 +431,15 @@ AssignmentOperator ::=
 |   '&=' | '^=' | '|='
 
 Expression ::=
-    AssignmentExpression
-|   Expression ',' AssignmentExpression
+    AssignmentExpression ExpressionRest
+
+ExpressionRest ::=
+    empty
+|   ',' AssignmentExpression ExpressionRest
 
 ExpressionNoIn ::=
-    AssignmentExpressionNoIn
-|   ExpressionNoIn ',' AssignmentExpressionNoIn
+    AssignmentExpressionNoIn ExpressionNoInRest
+
+ExpressionNoInRest ::=
+    empty
+|   ',' AssignmentExpressionNoIn ExpressionNoInRest
