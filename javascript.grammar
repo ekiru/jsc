@@ -173,8 +173,7 @@ ElementListRest ::=
     empty
 |   ',' Elision AssignmentExpression ElementListRest
 |   ',' AssignmentExpression ElementListRest
-|   ','
-|   ',' Elision
+|   ',' ElementListRest
 
 Elision ::=
     ',' ElisionRest
