@@ -267,5 +267,44 @@ function Parser (tokens) {
 	}
     }
 
+    this.memberExpression = function memberExpression() {
+	var expr;
+	var result;
+	if (this.accept('new')) {
+	    expr = this.expect(this.memberExpression());
+	    var args;
+	    if (args = this.argumentsList()) {
+		result = ['new', expr, args];
+		return this.memberExpressionRest(result) || result;
+	    } else {
+		return ['new', expr, []];
+	    }
+	} else if ((expr = this.primaryExpression()) || 
+		   (expr = this.functionExpression())) {
+	    if (result = this.memberExpressionRest(expr)) {
+		return result;
+	    } else {
+		return expr;
+	    }
+	} else {
+	    return false;
+	}
+    };
+
+    this.memberExpressionRest = function memberExpressionRest (firstE) {
+	if (this.accept('[')) {
+	    var indexExpr = this.expect(this.expression());
+	    this.expect(this.accept(']'));
+	    var result = ["subscript", firstE, indexExpr];
+	    return this.memberExpressionRest(result) || result;
+	} else if (this.accept('.')) {
+	    var propName = this.expect(this.identifier());
+	    var result = ["propertyGet", firstE, propName];
+	    return this.memberExpressionRest(result) || result;
+	} else {
+	    return false;
+	}
+    };
+
     this.getToken();
 }
