@@ -24,102 +24,154 @@
 */
 
 function Parser (tokens) {
-    var token;
+    this.tokens = tokens;
 
-    function getToken () {
-	token = tokens.pop();
+    this.getToken = function getToken () {
+	this.token = this.tokens.pop();
     }
 
-    function accept (targ) {
-	if (token == targ) {
-	    getToken();
-	    return token;
-	} else {
-	    throw SyntaxError("in identifier: unexpected " + token);
-	}
+    this.peek = function peek() {
+	return this.token
     }
 
-    function identifier() {
-	if (Array.isArray(token) && token[0] == "ident") {
-	    getToken();
-	    return token;
+    this.accept = function accept (targ) {
+	var tok = this.peek()
+	if (tok == targ) {
+	    this.getToken();
+	    return tok;
 	} else {
 	    return false;
 	}
     }
 
-    function numberLiteral() {
-	if (Array.isArray(token) && token[0] == "number") {
-	    getToken();
-	    return token;
+    this.expect = function expect (nonterm) {
+	if (nonterm) {
+	    return nonterm;
+	} else {
+	    throw SyntaxError("in expect: unexpected " + token);
+	}
+    };
+
+    this.identifier = function identifier() {
+	var tok = this.peek();
+	if (Array.isArray(tok) && tok[0] == "ident") {
+	    this.getToken();
+	    return tok;
+	} else {
+	    return false;
+	}
+    };
+
+    this.numberLiteral = function numberLiteral() {
+	var tok = this.peek();
+	if (Array.isArray(tok) && tok[0] == "number") {
+	    this.getToken();
+	    return tok;
+	} else {
+	    return false;
+	}
+    };
+
+    this.regexLiteral = function regexLiteral() {
+	var tok = this.peek()
+	if (Array.isArray(tok) && tok[0] == "regex") {
+	    this.getToken();
+	    return tok
 	} else {
 	    return false;
 	}
     }
 
-    function stringLiteral() {
-	if (Array.isArray(token) && token[0] == "string") {
-	    getToken();
-	    return token;
+    this.stringLiteral = function stringLiteral() {
+	var tok = this.peek();
+	if (Array.isArray(tok) && tok[0] == "string") {
+	    this.getToken();
+	    return tok;
 	} else {
 	    return false;
 	}
-    }
+    };
 
-    function literal() {
+    this.literal = function literal() {
 	var result;
-	if (result = accept('null')) {
+	if (result = this.accept('null')) {
 	    return result;
-	} else if (result = accept('true')) {
+	} else if (result = this.accept('true')) {
 	    return result;
-	} else if (result = accept('false')) {
+	} else if (result = this.accept('false')) {
 	    return result;
-	} else if (result = numberLiteral()) {
+	} else if (result = this.numberLiteral()) {
 	    return result;
-	} else if (result = stringLiteral()) {
+	} else if (result = this.regexLiteral()) {
+	    return result
+	} else if (result = this.stringLiteral()) {
 	    return result;
 	} else {
-	    throw SyntaxError("in literal, did not expect " + tokens);
+	    return false;
 	}
-    }
+    };
     
-    function elision() {
+    this.elision = function elision() {
 	var length = 0;
-	while (accept(',')) {
+	while (this.accept(',')) {
 	    length++;
 	}
-	return ["array", [], length];
+	return length > 0 && length;
+    };
+
+    this.elementListRest = function elementListRest() {
+	if (this.accept(',')) {
+	    var expr;
+	    var elis = this.elision() || 0;
+	    if (expr = this.assignmentExpression()) {
+		var ary = [];
+		ary[elis] = expr;
+		var rest;
+		if (rest = this.elementListRest()) {
+		    return ary.concat(rest);
+		} else {
+		    return ary;
+		}
+	    } else {
+		return false;
+	    }
+	} else {
+	    return false;
+	}
     }
 
-
-    function arrayLiteral() {
-	if (accept('[')) {
+    this.arrayLiteral = function arrayLiteral() {
+	if (this.accept('[')) {
 	    var beginElision;
 	    var expr;
-	    var ary;
+	    var ary = [];
 	    var length = 0;
 	    var rest;
-	    if (accept(']')) {
+	    if (this.accept(']')) {
 		return ["array", [], 0];
-	    } else if (beginElision = elision()) {
-		length = beginElision.length;
-		if (expr = assignmentExpression()) {
+	    } else if (beginElision = this.elision()) {
+		length = beginElision;
+		if (expr = this.assignmentExpression()) {
 		    ary[length] = expr;
 		    length++;
-		    if (rest = elementListRest(length)) {
+		    if (rest = this.elementListRest()) {
 			ary = ary.concat(rest);
 			length += rest.length;
-			return accept(']') && ["array", ary, length];
+			this.expect(this.accept(']'));
+			return ["array", ary, length];
 		    } else {
-			return accept(']') && ["array", ary, length];
+			this.expect(this.accept(']'));
+			return ["array", ary, length];
 		    }
 		}
-	    } else if (expr = assignmentExpression()) {
-		if (rest = elementListRest(1)) {
+	    } else if (expr = this.assignmentExpression()) {
+		if (rest = this.elementListRest()) {
 		    ary = rest.shift(expr);
-		    return accept(']') && ["array", ary, ary.length];
+		    this.expect(this.accept(']'));
+		    return ["array", ary, ary.length];
 		} else {
-		    return accept(']') && ["array", [expr], 1];
+		    this.except(this.accept(']'));
+		    return ["array", [expr], 1];
 		}
 	    } else {
 		throw SyntaxError("in arrayLiteral");
@@ -129,23 +181,25 @@ function Parser (tokens) {
 	}
     }
 
-    function primaryExpression () {
+    this.primaryExpression = function primaryExpression () {
 	var result;
-	if (result = accept('this')) {
+	if (result = this.accept('this')) {
 	    return result;
-	} else if (result = identifier()) {
+	} else if (result = this.identifier()) {
 	    return result;
-	} else if (result = literal()) {
+	} else if (result = this.literal()) {
 	    return result;
-	} else if (result = arrayLiteral()) {
+	} else if (result = this.arrayLiteral()) {
 	    return result;
-	} else if (result = objectLiteral()) {
+	} else if (result = this.objectLiteral()) {
 	    return result;
-	} else if (accept('(')) {
-	    result = expression();
-	    return accept(')') && result;
+	} else if (this.accept('(')) {
+	    result = this.expression();
+	    return this.accept(')') && result;
 	} else {
 	    throw Error("in primaryExpression: failed to match " + tokens);
 	}
     }
+
+    this.getToken();
 }

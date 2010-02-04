@@ -86,9 +86,15 @@ var literalLexicalGrammar = [
     new TokenDef(numericLiteralRegex, function (string) {
 	    return ["number", parseFloat(string)];
 	}),
-    new TokenDef(doubleQuoteStringLiteralRegex, TokenDef.identity),
-    new TokenDef(singleQuoteStringLiteralRegex, TokenDef.identity),
-    new TokenDef(regularExpressionRegex, TokenDef.identity)
+    new TokenDef(doubleQuoteStringLiteralRegex, function (string) {
+	    return ["string", string];
+	}),
+    new TokenDef(singleQuoteStringLiteralRegex, function (string) {
+	    return ["string", string];
+	}),
+    new TokenDef(regularExpressionRegex, function (regex) {
+	    return ["regex", regex];
+	})
     ];
 
 var punctuators = [
