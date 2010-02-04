@@ -27,7 +27,7 @@ function Parser (tokens) {
     this.tokens = tokens;
 
     this.getToken = function getToken () {
-	this.token = this.tokens.pop();
+	this.token = this.tokens.shift();
     }
 
     this.peek = function peek() {
@@ -57,6 +57,16 @@ function Parser (tokens) {
 	if (Array.isArray(tok) && tok[0] == "ident") {
 	    this.getToken();
 	    return tok;
+	} else {
+	    return false;
+	}
+    };
+
+    this.acceptIdentifier = function acceptIdentifier(id) {
+	var t = this.peek();
+	if (Array.isArray(t) && t[0] == "ident" && t[1] == id) {
+	    this.getToken();
+	    return true;
 	} else {
 	    return false;
 	}
@@ -103,7 +113,7 @@ function Parser (tokens) {
 	} else if (result = this.numberLiteral()) {
 	    return result;
 	} else if (result = this.regexLiteral()) {
-	    return result
+	    return result;
 	} else if (result = this.stringLiteral()) {
 	    return result;
 	} else {
@@ -180,6 +190,62 @@ function Parser (tokens) {
 	    return false;
 	}
     }
+
+    this.propertyName = function propertyName() {
+	var result;
+	if (result = this.identifier()) {
+	    return result;
+	} else if (result = this.stringLiteral()) {
+	    return result;
+	} else if (result = this.numericLiteral()) {
+	    return result;
+	} else {
+	    return false;
+	}
+    };
+
+    this.propertyAssignment = function propertyAssignment() {
+	var name;
+	if (this.acceptIdentifier('get')) {
+	    name = this.propertyName();
+	    this.expect(this.accept('('));
+	    this.expect(this.accept(')'));
+	    this.expect(this.accept('{'));
+	    var body = this.expect(this.functionBody);
+	    this.expect(this.accept('}'));
+	    return ["get", name, body];
+	} else if (this.acceptIdentifier('set')) {
+	    name = this.propertyName();
+	    this.expect(this.accept('('));
+	    var arg = this.expect(this.identifier());
+	    this.expect(this.accept(')'));
+	    this.expect(this.accept('{'));
+	    var body = this.expect(this.functionBody);
+	    this.expect(this.accept('}'));
+	    return ["set", name, arg, body];
+	}
+    };
+
+    this.objectLiteral = function objectLiteral() {
+	if (this.accept('{')) {
+	    var props = [];
+	    var assn;
+	    while (assn = this.propertyAssignment()) {
+		props.push(assn);
+		if (!accept(',')) {
+		    break;
+		}
+	    }
+	    this.accept(',');
+	    if (this.accept('}')) {
+		return ["object", props];
+	    } else {
+		throw SyntaxError("in objectLiteral: expected }");
+	    }
+	} else {
+	    return false;
+	}
+    };
 
     this.primaryExpression = function primaryExpression () {
 	var result;
