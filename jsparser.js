@@ -306,5 +306,34 @@ function Parser (tokens) {
 	}
     };
 
+    this.callExpressionRest = function callExpressionRest(first) {
+	var args;
+	if (args = this.argumentsList()) {
+	    var result = ["call", first, args];
+	    return this.callExpressionRest(result) || result;
+	} else if (this.accept('[')) {
+	    var expr = this.expect(this.expression());
+	    this.expect(this.accept(']'));
+	    var result = ["subscript", first, expr];
+	    return this.callExpressionRest(result) || result;
+	} else if (this.accept('.')) {
+	    var prop = this.expect(this.identifier());
+	    var result = ["propertyGet", first, prop];
+	    return this.callExpressionRest(result) || result;
+	} else {
+	    return false;
+	}
+    };
+
+    this.callExpression = function callExpression() {
+	var first = this.memberExpression();
+	if (first) {
+	    var result = first;
+	    return callExpressionRest(result) || result;
+	} else {
+	    return false;
+	}
+    };
+
     this.getToken();
 }
