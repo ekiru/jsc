@@ -335,5 +335,91 @@ function Parser (tokens) {
 	}
     };
 
+    this.argumentsList() = function argumentsList() {
+	if (this.accept('(')) {
+	    var result = [];
+	    var expr;
+	    while (expr = this.assignmentExpression()) {
+		result.push(expr);
+		if (!this.accept(',')) {
+		    break;
+		}
+	    }
+	    this.expect(this.accept(')'));
+	    return result;
+	} else {
+	    return false;
+	}
+    };
+
+    this.leftHandSideExpression = function leftHandSideExpression() {
+	return this.callExpression();
+    };
+
+    this.postfixExpression = function postfixExpression() {
+	var expr;
+	if (expr = this.leftHandSideExpression()) {
+	    if (this.accept('++')) {
+		return ["post_increment", expr];
+	    } else if (this.accept('--')) {
+		return ["post_decrement", expr];
+	    } else {
+		return expr;
+	    }
+	} else {
+	    return false
+	}
+    };
+
+    this.unaryExpression = function unaryExpression() {
+	var expr;
+	if (expr = this.postfixExpression()) {
+	    return expr;
+	} else if (this.accept('delete')) {
+	    return ['delete', this.expect(this.unaryExpression())];
+	} else if (this.accept('void')) {
+	    return ['void', this.expect(this.unaryExpression())];
+	} else if (this.accept('typeof')) {
+	    return ['typeof', this.expect(this.unaryExpression())];
+	} else if (this.accept('++')) {
+	    return ['pre_increment', this.expect(this.unaryExpression())];
+	} else if (this.accept('--')) {
+	    return ['pre_decrement', this.expect(this.unaryExpression())];
+	} else if (this.accept('+')) {
+	    return ['unary_plus', this.expect(this.unaryExpression())];
+	} else if (this.accept('-')) {
+	    return ['unary_negate', this.expect(this.unaryExpression())];
+	} else if (this.accept('~')) {
+	    return ['unary_bitwise_not', this.expect(this.unaryExpression())];
+	} else if (this.accept('!')) {
+	    return ['unary_logical_not', this.expect(this.unaryExpression())];
+	} else {
+	    return false;
+	}
+    };
+
+    this.multiplicativeExpressionRest = function multiplicativeExpressionRest(first) {
+	if (this.accept('*')) {
+	    var second = this.expect(this.unaryExpression());
+	    var result = ['mul', first, second];
+	    return this.multiplicativeExpressionRest(result) || result;
+	} else if (this.accept('/')) {
+	    var second = this.expect(this.unaryExpression());
+	    var result = ['div', first, second];
+	    return this.multiplicativeExpressionRest(result) || result;
+	} else if (this.accept('%')) {
+	    var second = this.expect(this.unaryExpression());
+	    var result = ['mod', first, second];
+	    return this.multiplicativeExpressionRest(result) || result;
+	} else {
+	    return false;
+	}
+    };
+
+    this.multiplicativeExpression = function multiplicativeExpression() {
+	var first = this.unaryExpression();
+	return this.multiplicativeExpressionRest(first) || first;
+    };
+
     this.getToken();
 }
