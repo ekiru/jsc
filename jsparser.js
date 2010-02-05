@@ -508,5 +508,93 @@ function Parser (tokens) {
 	}
     };
 
+    this.equalityExpressionRest = function equalityExpressionRest(first, noIn) {
+	if (this.accept('==')) {
+	    var second = this.relationalExpression(noIn);
+	    var result = ["equal", first, second];
+	    return this.equalityExpressionRest(result, noIn) || result;
+	} else if (this.accept('!=')) {
+	    var second = this.relationalExpression(noIn);
+	    var result = ["not_equal", first, second];
+	    return this.equalityExpressionRest(result, noIn) || result;	
+	} else if (this.accept('===')) {
+	    var second = this.relationalExpression(noIn);
+	    var result = ["strict_equal", first, second];
+	    return this.equalityExpressionRest(result, noIn) || result;
+	} else if (this.accept('!==')) {
+	    var second = this.relationalExpression(noIn);
+	    var result = ["strict_not_equal", first, second];
+	    return this.equalityExpressionRest(result, noIn) || result;
+	} else {
+	    return false;
+	}
+    };
+
+    this.equalityExpression = function equalityExpression(noIn) {
+	var expr = this.relationalExpression(noIn);
+	if (expr) {
+	    return this.equalityExpressionRest(expr, noIn) || expr;
+	} else {
+	    return false;
+	}
+    };
+
+    this.bitwiseAndExpressionRest = function (first, noIn) {
+	if (this.accept('&')) {
+	    var second = this.expect(this.equalityExpression());
+	    var result = ['bitwise_and', first, second];
+	    return this.bitwiseAndExpressionRest(result, noIn) || result;
+	} else {
+	    return false;
+	}
+    };
+
+    this.bitwiseAndExpression = function (noIn) {
+	var expr = this.equalityExpression(noIn);
+	if (expr) {
+	    return this.bitwiseAndExpressionRest(expr, noIn) || expr;
+	} else {
+	    return false;
+	}
+    };
+
+    this.bitwiseXorExpressionRest = function (first, noIn) {
+	if (this.accept('^')) {
+	    var second = this.expect(this.bitwiseAndExpression(noIn));
+	    var result = ['bitwise_xor', first, second];
+	    return this.bitwiseXorExpressionRest(result, NoIn) || result;
+	} else {
+	    return false;
+	}
+    };
+
+    this.bitwiseXorExpression = function (noIn) {
+	var expr = this.bitwiseAndExpression(noIn);
+	if (expr) {
+	    return this.bitwiseXorExpressionRest(expr, noIn) || expr;
+	} else {
+	    return false;
+	} 
+    };
+
+    this.bitwiseOrExpressionRest = function (first, noIn) {
+	if (this.accept('|')) {
+	    var second = this.expect(this.bitwiseXorExpression(noIn));
+	    var result = ['bitwise_or', first, second];
+	    return this.bitwiseOrExpressionRest(result, noIn) || result;
+	} else {
+	    return false;
+	}
+    };
+
+    this.bitwiseOrExpression = function (noIn) {
+	var expr = this.bitwiseXorExpression(noIn);
+	if (expr) {
+	    return this.bitwiseOrExpressionRest(expr, noIn) || expr;
+	} else {
+	    return false;
+	}
+    };
+
     this.getToken();
 }
