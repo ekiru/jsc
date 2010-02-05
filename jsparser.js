@@ -596,5 +596,122 @@ function Parser (tokens) {
 	}
     };
 
+    this.logicalAndExpressionRest = function (first, noIn) {
+	if (this.accept('&&')) {
+	    var second = this.expect(this.bitwiseOrExpression(noIn));
+	    var result = ['logical_and', first, second];
+	    return this.logicalAndExpressionRest(result, noIn) || result;
+	} else {
+	    return false;
+	}
+    };
+
+    this.logicalAndExpression = function (noIn) {
+	var expr = this.bitwiseOrExpression(noIn);
+	if (expr) {
+	    return this.logicalAndExpressionRest(expr, noIn) || expr;
+	} else {
+	    return false;
+	}
+    };
+
+    this.logicalOrExpressionRest = function (first, noIn) {
+	if (this.accept('||')) {
+	    var second = this.expect(this.logicalAndExpression(noIn));
+	    var result = ['logical_or', first, second];
+	    return this.logicalOrExpressionRest(result, noIn) || result;
+	} else {
+	    return false;
+	}
+    };
+
+    this.logicalOrExpression = function (noIn) {
+	var expr = this.logicalAndExpression(noIn);
+	if (expr) {
+	    return this.logicalOrExpressionRest(expr, noIn) || expr;
+	} else {
+	    return false;
+	}
+    };
+
+    this.conditionalExpression = function (noIn) {
+	var cond = this.logicalOrExpression(noIn);
+	if (cond) {
+	    if (this.accept('?')) {
+		var thenBranch = this.expect(this.assignmentExpression(noIn));
+		this.expect(this.accept(':'));
+		var elseBranch = this.expect(this.assignmentExpression(noIn));
+		return ['cond', cond, thenBranch, elseBranch];
+	    } else {
+		return cond;
+	    }
+	} else {
+	    return false;
+	}
+    };
+
+    this.assignmentOperator = function () {
+	if (this.accept('=')) {
+	    return 'assign';
+	} else if (this.accept('+=')) {
+	    return 'aug_assign_add';
+	} else if (this.accept('-=')) {
+	    return 'aug_assign_sub';
+	} else if (this.accept('*=')) {
+	    return 'aug_assign_mul';
+	} else if (this.accept('/=')) {
+	    return 'aug_assign_div';
+	} else if (this.accept('%=')) {
+	    return 'aug_assign_mod';
+	} else if (this.accept('<<=')) {
+	    return 'aug_assign_left_shift';
+	} else if (this.accept('>>=')) {
+	    return 'aug_assign_right_shift';
+	} else if (this.accept('>>>=')) {
+	    return 'aug_assign_right_shift_zero';
+	} else if (this.accept('&=')) {
+	    return 'aug_assign_bitwise_and';
+	} else if (this.accept('^=')) {
+	    return 'aug_assign_bitwise_xor';
+	} else if (this.accept('|=')) {
+	    return 'aug_assign_bitwise_or';
+	} else {
+	    return false;
+	};
+    };
+
+    this.assignmentExpression = function (noIn) {
+	var expr;
+	if (expr = this.leftHandSideExpression()) {
+	    var op = this.expect(this.assignmentOperator());
+	    var val = this.expect(this.assignmentExpression(noIn));
+	    return [op, expr, val];
+	} else if (expr = this.conditionalExpression(noIn)) {
+	    return expr;
+	} else {
+	    return false;
+	}
+    };
+
+    this.expression = function (noIn) {
+	var expr = this.assignmentExpression(noIn);
+	if (expr) {
+	    var exprs = [expr];
+	    var hasMultiple = false;
+	    while (this.accept(',')) {
+		hasMultiple = true;
+		exprs.push(this.expect(this.assignmentExpression(noIn)));
+	    }
+	    if (hasMultiple) {
+		exprs.shift('comma');
+		return exprs;
+	    } else {
+		return expr;
+	    }
+	} else {
+	    return false;
+	}
+    };
+
     this.getToken();
 }
