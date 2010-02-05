@@ -421,5 +421,92 @@ function Parser (tokens) {
 	return this.multiplicativeExpressionRest(first) || first;
     };
 
+    this.additiveExpressionRest = function additiveExpressionRest(first) {
+	if (this.accept('+')) {
+	    var result = ["add", first, this.expect(this.multiplicativeExpression())];
+	    return this.additiveExpressionRest(result) || result;
+	} else if (this.accept('-')) {
+	    var result = ["sub", first, this.expect(this.multiplicativeExpression())];
+	    return this.additiveExpressionRest(result) || result;
+	} else {
+	    return false;
+	}
+    };
+
+    this.additiveExpression = function additiveExpression() {
+	var expr = this.multiplicativeExpression();
+	if (expr) {
+	    return this.additiveExpressionRest(expr) || expr;
+	} else {
+	    return false;
+	}
+    };
+
+    this.shiftExpressionRest = function shiftExpressionRest(first) {
+	if (this.accept('<<')) {
+	    var second = this.additiveExpression();
+	    var result = ["shift_left", first, second];
+	    return this.shiftExpressionRest(result) || result;
+	} else if (this.accept('>>')) {
+	    var second = this.additiveExpression();
+	    var result = ["shift_right", first, second];
+	    return this.shiftExpressionRest(result) || result;
+	} else if (this.accept('>>>')) {
+	    var second = this.additiveExpression();
+	    var result = ["shift_right_zero", first, second];
+	    return this.shiftExpressionRest(result) || result;
+	} else {
+	    return false;
+	}
+    };
+
+    this.shiftExpression = function shiftExpression() {
+	var expr = this.additiveExpression();
+	if (expr) {
+	    return this.shiftExpressionRest(expr) || expr;
+	} else {
+	    return false;
+	}
+    };
+
+    this.relationalExpressionRest = function relationalExpressionRest(first, noIn) {
+	if (this.accept('<')) {
+	    var second = this.expect(this.shiftExpression());
+	    var result = ["less_than", first, second];
+	    return this.relationalExpressionRest(result, noIn) || result;
+	} else if (this.accept('>')) {
+	    var second = this.expect(this.shiftExpression());
+	    var result = ["greater_than", first, second];
+	    return this.relationalExpressionRest(result, noIn) || result;
+	} else if (this.accept('<=')) {
+	    var second = this.expect(this.shiftExpression());
+	    var result = ["less_than_or_equal", first, second];
+	    return this.relationalExpressionRest(result, noIn) || result;
+	} else if (this.accept('>=')) {
+	    var second = this.expect(this.shiftExpression());
+	    var result = ["greater_than_or_equal", first, second];
+	    return this.relationalExpressionRest(result, noIn) || result;
+	} else if (this.accept('instanceof')) {
+	    var second = this.expect(this.shiftExpression());
+	    var result = ["instanceof", first, second];
+	    return this.relationalExpressionRest(result, noIn) || result;
+	} else if (!noIn && this.accept('in')) {
+	    var second = this.expect(this.shiftExpression());
+	    var result = ["in", first, second];
+	    return this.relationalExpressionRest(result, noIn) || result;
+	} else {
+	    return false;
+	}
+    };
+
+    this.relationalExpression = function relationalExpression(noIn) {
+	var expr = this.shiftExpression();
+	if (expr) {
+	    return this.relationalExpressionRest(expr, noIn) || expr;
+	} else {
+	    return false;
+	}
+    };
+
     this.getToken();
 }
