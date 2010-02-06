@@ -713,5 +713,60 @@ function Parser (tokens) {
 	}
     };
 
+    this.debugger = function () {
+	return this.accept('debugger');
+    };
+
+    this.finally = function () {
+	if (this.accept('finally')) {
+	    var block = this.expect(this.block());
+	    return block;
+	}
+    };
+
+    this.catchS = function () {
+	if (this.accept('catch')) {
+	    this.expect(this.accept('('));
+	    var exc = this.expect(this.identifier());
+	    this.expect(this.accept(')'));
+	    var block = this.expect(this.block());
+	    return [exc, block];
+	} else {
+	    return false;
+	}
+    };
+
+    this.tryS = function () {
+	if (this.accept('try')) {
+	    var block = this.expect(this.block());
+	    var catchB;
+	    var finallyB;
+	    if (catchB = this.catchS()) {
+		if (finallyB = this.finally()) {
+		    return ['try', catchB, finallyB];
+		} else {
+		    return ['try', catchB, null];
+		}
+	    } else if (finallyB = this.finally()) {
+		return ['try', null, finallyB];
+	    } else {
+		throw SyntaxError('in tryS: need either catch or finally block.');
+	    }
+	} else {
+	    return false;
+	}
+    };
+
+    this.labelledStatement = function () {
+	var label;
+	if (label = this.identifier()) {
+	    this.expect(this.accept(':'));
+	    var st = this.expect(this.statement());
+	    return ["labelled", label, st];
+	} else {
+	    return false;
+	}
+    };
+
     this.getToken();
 }
