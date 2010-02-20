@@ -57,6 +57,18 @@ function nconc(arr1, arr2) {
   return arr1;
 }
 
+function objnconc(obj1, obj2) {
+    var x;
+    for (x in obj2) {
+	if (!obj1[x]) {
+	    obj1[x] = obj2[x];
+	} else {
+	    throw Error("Both objects had a " + x + " key!.");
+	}
+    };
+    return obj1;
+}
+
 function defined(o) {
   return o !== undefined;
 }

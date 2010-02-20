@@ -48,7 +48,7 @@ function Parser (tokens) {
 	if (nonterm) {
 	    return nonterm;
 	} else {
-	    throw SyntaxError("in expect: unexpected " + token);
+	    throw SyntaxError("in expect: unexpected " + this.peek());
 	}
     };
 
@@ -329,13 +329,13 @@ function Parser (tokens) {
 	var first = this.memberExpression();
 	if (first) {
 	    var result = first;
-	    return callExpressionRest(result) || result;
+	    return this.callExpressionRest(result) || result;
 	} else {
 	    return false;
 	}
     };
 
-    this.argumentsList() = function argumentsList() {
+    this.argumentsList = function argumentsList() {
 	if (this.accept('(')) {
 	    var result = [];
 	    var expr;
@@ -713,18 +713,18 @@ function Parser (tokens) {
 	}
     };
 
-    this.debugger = function () {
+    this.debuggerStatement = function () {
 	return this.accept('debugger');
     };
 
-    this.finally = function () {
+    this.finallyStatement = function () {
 	if (this.accept('finally')) {
 	    var block = this.expect(this.block());
 	    return block;
 	}
     };
 
-    this.catchS = function () {
+    this.catchStatement = function () {
 	if (this.accept('catch')) {
 	    this.expect(this.accept('('));
 	    var exc = this.expect(this.identifier());
@@ -736,18 +736,18 @@ function Parser (tokens) {
 	}
     };
 
-    this.tryS = function () {
+    this.tryStatement = function () {
 	if (this.accept('try')) {
 	    var block = this.expect(this.block());
 	    var catchB;
 	    var finallyB;
-	    if (catchB = this.catchS()) {
-		if (finallyB = this.finally()) {
+	    if (catchB = this.catchStatement()) {
+		if (finallyB = this.finallyStatement()) {
 		    return ['try', catchB, finallyB];
 		} else {
 		    return ['try', catchB, null];
 		}
-	    } else if (finallyB = this.finally()) {
+	    } else if (finallyB = this.finallyStatement()) {
 		return ['try', null, finallyB];
 	    } else {
 		throw SyntaxError('in tryS: need either catch or finally block.');
@@ -767,6 +767,409 @@ function Parser (tokens) {
 	    return false;
 	}
     };
+
+    this.caseClause = function () {
+	if (this.accept('case')) {
+	    var expr = this.expect(this.expression());
+	    this.expect(this.accept(':'));
+	    var statements = this.statementList() || [];
+	    statements.unshift(expr);
+	    return statements;
+	} else {
+	    return false;
+	}
+    };
+
+    this.caseClausesRest = function (firstCs) {
+	var nextC = this.caseClause();
+	if (nextC) {
+	    var result = firstCs.concat([nextC]);
+	    return this.caseClausesRest(result) || result;
+	} else {
+	    return false;
+	}
+    };
+
+    this.caseClauses = function () {
+	var firstC = this.caseClause();
+	if (firstC) {
+	    return this.caseClausesRest([firstC]) || firstC;
+	} else {
+	    return false;
+	}
+    };
+
+    this.defaultClause = function () {
+	if (this.accept('default')) {
+	    this.expect(this.accept(':'));
+	    var statements = this.statementList() || [];
+	    statements.unshift('default');
+	    return statements;
+	} else {
+	    return false;
+	}
+    };
+
+    this.caseBlock = function () {
+	if (this.accept('{')) {
+	    var firstClauses = this.caseClauses();
+	    if (firstClauses) {
+		var defaultClause = this.defaultClause();
+		if (defaultClause) {
+		    firstClauses.push(['default', defaultClause]);
+		    var otherClauses = this.caseClauses();
+		    if (otherClauses) {
+			firstClauses.concat(otherClauses);
+		    } else {
+			return firstClauses;
+		    }
+		} else {
+		    return firstClauses;
+		}
+	    } else {
+		this.expect(this.accept('}'));
+		return [];
+	    } 
+	} else {
+	    return false;
+	}
+    };
+
+    this.switchStatement = function () {
+	if (this.accept('switch')) {
+	    this.expect(this.accept('('));
+	    var val = this.expect(this.expression());
+	    this.expect(this.accept(')'));
+	    var cases = this.expect(this.caseBlock());
+	    return ['switch', val, cases];
+	} else {
+	    return false;
+	}
+    };
+
+    this.withStatement = function () {
+	if (this.accept('with')) {
+	    this.expect(this.accept('('));
+	    var expr = this.expect(this.expression());
+	    this.expect(this.accept(')'));
+	    var statement = this.expect(this.statement());
+	    return ['with', expr, statement];
+	} else {
+	    return false;
+	}
+    };
+
+    this.returnStatement = function () {
+	if (this.accept('return')) {
+	    var expr = this.expression();
+	    this.expect(this.accept(';'));
+	    if (expr) {
+		return ['return', expr];
+	    } else {
+		return ['return'];
+	    }
+	} else {
+	    return false;
+	}
+    };
+
+    this.breakStatement = function () {
+	if (this.accept('break')) {
+	    var id = this.identifier();
+	    this.expect(this.accept(';'));
+	    if (id) {
+		return ['break', id];
+	    } else {
+		return ['break'];
+	    }
+	} else {
+	    return false;
+	}
+    };
+
+    this.continueStatement = function () {
+	if (this.accept('continue')) {
+	    var id = this.identifier();
+	    this.expect(this.accept(';'));
+	    if (id) {
+		return ['continue', id];
+	    } else {
+		return ['continue'];
+	    }
+	} else {
+	    return false;
+	}
+    };
+
+    this.doStatement = function () {
+	if (this.accept('do')) {
+	    var body = this.expect(this.statement());
+	    this.expect(this.accept('while'));
+	    this.expect(this.accept('('));
+	    var cond = this.expect(this.expression());
+	    this.expect(this.accept(')'));
+	    this.expect(this.accept(';'));
+	    return ['do', body, cond];
+	} else {
+	    return false;
+	}
+    };
+
+    this.whileStatement = function () {
+	if (this.accept('while')) {
+	    this.expect(this.accept('('));
+	    var cond = this.expect(this.expression());
+	    this.expect(this.accept(')'));
+	    var body = this.expect(this.statement());
+	    return ['while', cond, body];
+	} else {
+	    return false;
+	}
+    };
+
+    this.forStatement = function () {
+	if (this.accept('for')) {
+	    this.expect(this.accept('('));
+	    var isForIn = false;
+	    var init;
+	    var container;
+	    var cond;
+	    var step;
+	    var body;
+	    if (this.expect(this.accept('var'))) {
+		isForIn = true;
+		init = this.expect(this.variableDeclaration(true));
+	    } else if (init = this.expression(true)) {
+		if (this.accept('in')) {
+		    isForIn = true;
+		    container = this.expect(this.expression());
+		}
+	    }
+	    if (!isForIn) {
+		this.expect(this.accept(';'));
+		cond = this.expression();
+		this.expect(this.accept(';'));
+		step = this.expression();
+	    }
+	    this.expect(this.accept(')'));
+	    body = this.expect(this.statement());
+	    if (isForIn) {
+		return ['forin', { init: [init, container], cond: cond, step: step },
+			body];
+	    } else {
+		return ['for', { init: init, cond: cond, step: step },
+			body];
+	    }
+	} else {
+	    return false;
+	}
+    };
+
+    this.iterationStatement = function () {
+	return this.doStatement || this.whileStatement || this.forStatement();
+    };
+
+    this.ifStatement = function () {
+	if (this.accept('if')) {
+	    this.expect(this.accept('('));
+	    var cond = this.expect(this.expression());
+	    this.expect(this.accept(')'));
+	    var thenBlock = this.expect(this.statement());
+	    if (this.accept('else')) {
+		return ['if', cond, thenBlock, this.expect(this.statement())];
+	    } else {
+		return ['if', cond, thenBlock];
+	    }
+	} else {
+	    return false;
+	}
+    };
+
+    this.expressionStatement = function () {
+	var t = this.peek();
+	if (!(t in ['{', 'function'])) {
+	    var expr = this.expression();
+	    this.expect(this.accept(';'));
+	    return ['expr', expr];
+	} else {
+	    return false;
+	}
+    };
+
+    this.emptyStatement = function () {
+	return this.accept(';') && ['empty'];
+    };
+
+    this.initialiser = function (noIn) {
+	if (this.accept('=')) {
+	    return this.expect(this.assignmentExpression(noIn));
+	} else {
+	    return false;
+	}
+    };
+
+    this.variableDeclaration = function (noIn) {
+	var id = this.identifier();
+	if (id) {
+	    var init = this.initialiser(noIn);
+	    if (init) {
+		return ['init', id, init];
+	    } else {
+		return id;
+	    }
+	} else {
+	    return false;
+	}
+    };
+
+    this.variableDeclarationList = function (noIn) {
+	var decl = this.variableDeclaration(noIn);
+	if (decl) {
+	    return this.variableDeclarationListRest([decl], noIn) || decl;
+	} else {
+	    return false;
+	}
+    };
+
+    this.variableDeclarationListRest = function (earlierDecls, noIn) {
+	if (this.accept(',')) {
+	    var nextDecl = this.expect(this.variableDeclaration(noIn));
+	    var result = earlierDecls.concat([nextDecl]);
+	    return this.variableDeclarationListRest(result, noIn) || result;
+	} else {
+	    return false;
+	}
+    };
+
+    this.variableStatement = function () {
+	if (this.accept('var')) {
+	    var decls = this.variableDeclarationList();
+	    this.expect(this.accept(';'));
+	    decls.unshift('declarations');
+	    return decls;
+	} else {
+	    return false;
+	}
+    };
+    
+    this.statementListRest = function (firstStatements) {
+	var nextSt;
+	if (nextSt = this.statement()) {
+	    var result = firstStatements.concat([nextSt]);
+	    return this.statementListRest(result) || result;
+	} else {
+	    return false;
+	}
+    };
+
+    this.statementList = function () {
+	var st;
+	if (st = this.statement()) {
+	    var result = [st];
+	    return this.statementListRest(result) || result;
+	} else {
+	    return false;
+	}
+    };
+
+    this.block = function () {
+	if (this.accept('{')) {
+	    var result = ['do'].concat(this.statementList());
+	    this.expect('}');
+	    return result;
+	} else {
+	    return false;
+	}
+    };
+
+    this.statement = function () {
+	return (this.block() ||
+		this.variableStatement() ||
+		this.emptyStatement() ||
+		this.expressionStatement() ||
+		this.ifStatement() ||
+		this.iterationStatement() ||
+		this.continueStatement() ||
+		this.breakStatement() ||
+		this.returnStatement() ||
+		this.withStatement() ||
+		this.labelledStatement() ||
+		this.switchStatement() ||
+		this.throwStatement() ||
+		this.tryStatement() ||
+		this.debuggerStatement());	
+    };
+
+    this.functionBody = function () {
+	return this.sourceElements() || [];
+    };
+
+    this.formalParameterList = function () {
+	var result = [];
+	var id;
+	while (id = this.identifier()) {
+	    result.push(id);
+	    if (!this.accept(',')) {
+		break;
+	    }
+	}
+	return result;
+    };
+
+    this.functionDeclaration = function () {
+	if (this.accept('function')) {
+	    var name = this.expect(this.identifier());
+	    this.expect(this.accept('('));
+	    var params = this.formalParameterList() || [];
+	    this.expect(this.accept(')'));
+	    this.expect(this.accept('{'));
+	    var body = this.functionBody();
+	    this.expect(this.accept('}'));
+	    return ['defun', name, params, body];
+	} else {
+	    return false;
+	}
+    };
+
+    this.functionExpression = function () {
+	if (this.accept('function')) {
+	    var name = this.identifier();
+	    this.expect(this.accept('('));
+	    var params = this.formalParameterList() || [];
+	    this.expect(this.accept(')'));
+	    this.expect(this.accept('{'));
+	    var body = this.functionBody();
+	    this.expect(this.accept('}'));
+	    if (name) {
+		return ['named_lambda', name, params, body];
+	    } else {
+		return ['lambda', params, body];
+	    }
+	} else {
+	    return false;
+	}
+    };
+
+    this.sourceElement = function () {
+	return this.functionDeclaration() || this.statement();
+    };
+
+    this.sourceElements = function () {
+	var result = [];
+	var se;
+	while (se = this.sourceElement()) {
+	    result.push(se);
+	}
+	if (result.length) {
+	    return result;
+	} else {
+	    return false;
+	}
+    };
+
+    this.program = function () {
+	return this.sourceElements();
+    }
 
     this.getToken();
 }
