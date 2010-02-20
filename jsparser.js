@@ -683,12 +683,12 @@ function Parser (tokens) {
 
     this.assignmentExpression = function (noIn) {
 	var expr;
-	if (expr = this.leftHandSideExpression()) {
+	if (expr = this.conditionalExpression(noIn)) {
+	    return expr;
+	} else if (expr = this.leftHandSideExpression()) {
 	    var op = this.expect(this.assignmentOperator());
 	    var val = this.expect(this.assignmentExpression(noIn));
 	    return [op, expr, val];
-	} else if (expr = this.conditionalExpression(noIn)) {
-	    return expr;
 	} else {
 	    return false;
 	}
@@ -753,6 +753,16 @@ function Parser (tokens) {
 	    } else {
 		throw SyntaxError('in tryS: need either catch or finally block.');
 	    }
+	} else {
+	    return false;
+	}
+    };
+
+    this.throwStatement = function () {
+	if (this.accept('throw')) {
+	    var expr = this.expect(this.expression());
+	    this.expect(this.accept(';'));
+	    return ['throw', expr];
 	} else {
 	    return false;
 	}
@@ -967,7 +977,7 @@ function Parser (tokens) {
     };
 
     this.iterationStatement = function () {
-	return this.doStatement || this.whileStatement || this.forStatement();
+	return this.doStatement() || this.whileStatement() || this.forStatement();
     };
 
     this.ifStatement = function () {
@@ -988,8 +998,8 @@ function Parser (tokens) {
 
     this.expressionStatement = function () {
 	var t = this.peek();
-	if (!(t in ['{', 'function'])) {
-	    var expr = this.expression();
+	var expr;
+	if (!(t in ['{', 'function']) && (expr = this.expression())) {
 	    this.expect(this.accept(';'));
 	    return ['expr', expr];
 	} else {
