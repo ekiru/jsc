@@ -684,11 +684,13 @@ function Parser (tokens) {
     this.assignmentExpression = function (noIn) {
 	var expr;
 	if (expr = this.conditionalExpression(noIn)) {
-	    return expr;
-	} else if (expr = this.leftHandSideExpression()) {
-	    var op = this.expect(this.assignmentOperator());
-	    var val = this.expect(this.assignmentExpression(noIn));
-	    return [op, expr, val];
+	    var op;
+	    if (op = this.assignmentOperator()) {
+		var val = this.expect(this.assignmentExpression(noIn));
+		return [op, expr, val];
+	    } else {
+		return expr;
+	    }
 	} else {
 	    return false;
 	}
@@ -947,14 +949,14 @@ function Parser (tokens) {
 	    var cond;
 	    var step;
 	    var body;
-	    if (this.expect(this.accept('var'))) {
-		isForIn = true;
+	    if (this.accept('var')) {
 		init = this.expect(this.variableDeclaration(true));
-	    } else if (init = this.expression(true)) {
-		if (this.accept('in')) {
-		    isForIn = true;
-		    container = this.expect(this.expression());
-		}
+	    } else {
+		init = this.expect(this.expression(true));
+	    }
+	    if (this.accept('in')) {
+		isForIn = true;
+		container = this.expect(this.expression());
 	    }
 	    if (!isForIn) {
 		this.expect(this.accept(';'));
