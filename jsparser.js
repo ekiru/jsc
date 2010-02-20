@@ -967,10 +967,10 @@ function Parser (tokens) {
 	    this.expect(this.accept(')'));
 	    body = this.expect(this.statement());
 	    if (isForIn) {
-		return ['forin', { init: [init, container], cond: cond, step: step },
+		return ['forin', [init, container], cond, step,
 			body];
 	    } else {
-		return ['for', { init: init, cond: cond, step: step },
+		return ['for', init, cond, step,
 			body];
 	    }
 	} else {
