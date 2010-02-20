@@ -63,7 +63,7 @@ VariableDeclarationList ::=
 
 VariableDeclarationListRest ::=
     empty
-|   VariableDeclaration VariableDeclarationListRest
+|   ',' VariableDeclaration VariableDeclarationListRest
 
 VariableDeclarationListNoIn ::=
     VariableDeclarationNoIn VariableDeclarationNoInRest
@@ -78,7 +78,7 @@ VariableDeclaration ::=
 VariableDeclarationNoIn ::=
     Identifier InitialiserNoIn?
 
-Initializser ::=
+Initialiser ::=
     '=' AssignmentExpression
 
 InitialiserNoIn ::=
