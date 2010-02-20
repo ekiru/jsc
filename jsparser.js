@@ -48,7 +48,8 @@ function Parser (tokens) {
 	if (nonterm) {
 	    return nonterm;
 	} else {
-	    throw SyntaxError("in expect: unexpected " + this.peek());
+	    throw SyntaxError("in expect: unexpected " + this.peek() + " in " +
+		this.tokens);
 	}
     };
 
@@ -263,7 +264,7 @@ function Parser (tokens) {
 	    result = this.expression();
 	    return this.accept(')') && result;
 	} else {
-	    throw Error("in primaryExpression: failed to match " + tokens);
+	    return false;
 	}
     }
 
