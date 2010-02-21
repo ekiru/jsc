@@ -23,6 +23,8 @@
   OTHER DEALINGS IN THE SOFTWARE.
 */
 
+load('grammar.js');
+
 function Parser (tokens) {
     this.tokens = tokens;
 
@@ -1181,8 +1183,16 @@ function Parser (tokens) {
     };
 
     this.program = function () {
-	return this.sourceElements();
+	return ['program', this.sourceElements()];
     }
 
     this.getToken();
+}
+
+function parseString(str) {
+    return new Parser(jsLex(lexicalGrammar, str)).program();
+}
+
+function parseFile(file) {
+    return new Parser(jsLex(lexicalGrammar, readFile(file))).program();
 }
