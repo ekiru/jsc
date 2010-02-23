@@ -226,6 +226,16 @@ function Parser (tokens) {
 	    var body = this.expect(this.functionBody);
 	    this.expect(this.accept('}'));
 	    return ["set", name, arg, body];
+	} else {
+	    var name = (this.identifier() || this.stringLiteral() ||
+			this.numberLiteral());
+	    if (name) {
+		this.expect(this.accept(':'));
+		var val = this.expect(this.expression());
+		return ["property", name, val];
+	    } else {
+		return false;
+	    }
 	}
     };
 
@@ -235,7 +245,7 @@ function Parser (tokens) {
 	    var assn;
 	    while (assn = this.propertyAssignment()) {
 		props.push(assn);
-		if (!accept(',')) {
+		if (!this.accept(',')) {
 		    break;
 		}
 	    }
