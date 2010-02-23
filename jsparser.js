@@ -66,8 +66,8 @@ function Parser (tokens) {
     };
 
     this.acceptIdentifier = function acceptIdentifier(id) {
-	var t = this.peek();
-	if (Array.isArray(t) && t[0] == "ident" && t[1] == id) {
+	var tok = this.peek();
+	if (Array.isArray(tok) && tok[0] == "ident" && tok[1] == id) {
 	    this.getToken();
 	    return true;
 	} else {
