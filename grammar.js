@@ -1,13 +1,11 @@
-var jslex_path = "../jslex/jslex.js"; // The path to jslex.js
-
-load(jslex_path) 
+var lex = require('jslex');
 
 var multiLineCommentRegex = /\/\*(([^*]|(\*[^/]))*)\*+\//;
 var singleLineCommentRegex = /\/\/.*$/m;
 
 var commentLexicalGrammar = [
-    new TokenDef(multiLineCommentRegex, TokenDef.ignore),
-    new TokenDef(singleLineCommentRegex, TokenDef.ignore)
+    new lex.TokenDef(multiLineCommentRegex, lex.TokenDef.ignore),
+    new lex.TokenDef(singleLineCommentRegex, lex.TokenDef.ignore)
     ];
 
 var reservedWordList = [
@@ -27,14 +25,14 @@ var reservedWordList = [
     ];
 
 var reservedWordLexicalGrammar = reservedWordList.map(function (word) {
-	return (new TokenDef(RegExp(word), TokenDef.identity));
+	return (new lex.TokenDef(RegExp(word), lex.TokenDef.identity));
     });
 
 var identifierRegex = 
     /([A-Za-z$_]|(\\u[0-9A-Fa-f]{4}))(([\w$_\d]|(\\u[0-9A-Fa-f]{4})))*/;
 
 var identifierLexicalGrammar = [
-    new TokenDef(identifierRegex, function (string) {
+    new lex.TokenDef(identifierRegex, function (string) {
 	    return ["ident", string];
 	})
     ];
@@ -58,16 +56,16 @@ var regularExpressionRegex =
     /\/([^*\\/\[])?([^\\/\[]|(\\.)|(\[([^\]\\]|(\\.))*\]))*\/[a-zA-Z]*/;
 
 var literalLexicalGrammar = [
-    new TokenDef(numericLiteralRegex, function (string) {
+    new lex.TokenDef(numericLiteralRegex, function (string) {
 	    return ["number", parseFloat(string)];
 	}),
-    new TokenDef(doubleQuoteStringLiteralRegex, function (string) {
+    new lex.TokenDef(doubleQuoteStringLiteralRegex, function (string) {
 	    return ["string", string];
 	}),
-    new TokenDef(singleQuoteStringLiteralRegex, function (string) {
+    new lex.TokenDef(singleQuoteStringLiteralRegex, function (string) {
 	    return ["string", string];
 	}),
-    new TokenDef(regularExpressionRegex, function (regex) {
+    new lex.TokenDef(regularExpressionRegex, function (regex) {
 	    return ["regex", regex];
 	})
     ];
@@ -92,7 +90,7 @@ var punctuators = [
     ];
 
 var punctuatorLexicalGrammar = punctuators.map(function (symb) {
-	return new TokenDef(symb, TokenDef.identity);
+	return new lex.TokenDef(symb, lex.TokenDef.identity);
     });
 
 var lexicalGrammar = commentLexicalGrammar.
@@ -100,3 +98,7 @@ var lexicalGrammar = commentLexicalGrammar.
     concat(identifierLexicalGrammar).
     concat(literalLexicalGrammar).
     concat(punctuatorLexicalGrammar);
+
+if (typeof exports !== 'undefined') {
+    exports.lexical = lexicalGrammar;
+}

@@ -1,20 +1,20 @@
-importPackage(java.io, java.lang);
+var config = require("./jsc_config");
+var modules = require("./jsc_modules");
+var scopes = require("./jsc_scopes");
+var util = require("./util");
 
-load("jsc_config.js");
-load("jsc_modules.js");
-load("jsc_scopes.js");
-load("util.js");
-
+var jsc_symbol_locations = config.jsc_symbol_locations;
+var jsc_builtins = config.jsc_builtins;
 
 function compile (prog) {
     var symbols_used = [];
     var functions_defined = {};
-    var globalScope = new Scope(null);
+    var globalScope = new scopes.Scope(null);
     var main_text = wrapMain(prog, symbols_used, functions_defined, globalScope);
     
     var include_text = '#include "js_types.h"\n';
     var included_files = { "js_types.h" : true };
-    foreach(symbols_used, 
+    util.foreach(symbols_used, 
 	    function (symbol) {
 		var file = jsc_symbol_locations[symbol];
 		if (file != undefined && included_files[file] == undefined) {
@@ -27,7 +27,7 @@ function compile (prog) {
 
     var declaration_text = "";
     var definition_text = "";
-    foreach(functions_defined,
+    util.foreach(functions_defined,
 	    function (func) {
 		declaration_text += func["declaration"];
 		definition_text += func["definition"];
@@ -62,10 +62,10 @@ function compileProgram(prog, symbols_used, functions_defined, scope) {
 }
 
 function compileDo(prog, symbols_used, functions_defined, scope) {
-    var statements = rest(prog);
+    var statements = util.rest(prog);
     var resultText = "{\n";
 
-    foreach(statements, 
+    util.foreach(statements, 
 	    function (statement) {
 		var comp = compileProgram(statement,
 					  symbols_used, functions_defined, scope);
@@ -77,21 +77,21 @@ function compileDo(prog, symbols_used, functions_defined, scope) {
 }
 
 function compileDefun(defun, symbols_used, functions_defined, scope) {
-    var internalScope = new Scope(scope);
+    var internalScope = new scopes.Scope(scope);
 
-    var name = moduleFunction("user", defun[1]);
-    if (defined(functions_defined[name])) {
+    var name = modules.moduleFunction("user", defun[1]);
+    if (util.defined(functions_defined[name])) {
 	throw Error("Multiple definitions of function " + name + ".");
     }
     var args = defun[2];
-    foreach(args, function (arg) {
+    util.foreach(args, function (arg) {
 	    internalScope.bind(arg);
 	});
 
     var body = defun[3];
     var signature = 
 	"void " + name +
-	"(" + map(args, function(str) {
+	"(" + util.map(args, function(str) {
 		return "struct js_value *" + str;
 	    }).join(", ") + ")";
 
@@ -162,7 +162,7 @@ function compileAssign(expr, symbols_used, functions_defined, scope) {
 function compileCall(expr, symbols_used, functions_defined, scope) {
     var resultString = "";
     var func = expr[1];
-    var args = rest(rest(expr));
+    var args = util.rest(util.rest(expr));
     if (Array.isArray(func)) {
 	func = compileExpr(func, symbols_used, functions_defined, scope);
     }
@@ -171,12 +171,12 @@ function compileCall(expr, symbols_used, functions_defined, scope) {
 	resultString += jsc_builtins[func];
 	symbols_used.push(jsc_builtins[func]);
     } else {
-	resultString += moduleFunction("user", func);
+	resultString += modules.moduleFunction("user", func);
     }
     resultString += "(";
  
     if (args.length > 0) {
-	foreach(args, 
+	util.foreach(args, 
 		function (arg) {
 		    var comp = compileExpr(arg, symbols_used, functions_defined, scope);
 		    resultString += comp + ",";
@@ -198,55 +198,6 @@ function compileLambda(lambda, symbols_used, functions_defined, scope) {
     return name;
 }
 
-hello_world = ["call", "println", ["string", "Hello, world!"]];
-hello_world_2_arg = ["call", "print2ln", ["string", "Hello,"],
-		     ["string", "World!"]];
-multiple_exprs = ["do", 
-		  ["call", "print", ["string", "Hello,"]],
-		  ["call", "print", ["string", " "]],
-		  ["call", "println", ["string", "World!"]]];
-subexprs = ["do", 
-	    ["call", "print", ["string", "'Hello world' takes "]],
-	    ["call", "print", ["call", "strlen", 
-			       ["string", "Hello world"]]],
-	    ["call", "println", ["string", "bytes."]]];
-
-defun = ["do",
-	 ["defun", "hello_world", [], 
-	  ["call", "println", ["string", "Hello, world!"]]],
-	 ["call", "hello_world"]];
-
-int_literal = ["call", "println", ["int", 11]];
-
-cond = ["do",
-	["if", ["int", 1],
-	 ["call", "println", ["string", "1 is true."]],
-	 ["call", "println", ["string", "wrong 1 is false."]]],
-	["if", ["int", 0],
-	 ["call", "println", ["string", "wrong 0 is true."]],
-	 ["call", "println", ["string", "0 is false."]]],
-	["if", ["string", ""],
-	 ["call", "println", ["string", "wrong \'\' is true."]],
-	 ["call", "println", ["string", "\'\' is false."]]],
-	["if", ["string", "Hello"],
-	 ["call", "println", ["string", "\'Hello\' is true."]],
-	 ["call", "println", ["string", "wrong \'Hello\' is false."]]]];
-
-lambda_usage = ["call", ["lambda", [],
-			 ["call", "println", 
-			  ["string", "Hello, world!"]]]];
-
-defun_args = ["do", 
-	      ["defun", "print_two_things", ["s1", "s2"],
-	       ["do", 
-		["call", "print", ["varget", "s1"]],
-		["call", "println", ["varget", "s2"]]]],
-	      ["call", "print_two_things", 
-	       ["string", "Hello, "],
-	       ["string", "World!"]]];
-
-assignment = ["do",
-	      ["assign", "f", ["int", 5]],
-	      ["call", "println", ["varget", "f"]],
-	      ["assign", "f", ["string", "Hello, there."]],
-	      ["call", "println", ["varget", "f"]]]
+if (typeof exports !== "undefined") {
+    exports.compile = compile;
+}

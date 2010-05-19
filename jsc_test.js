@@ -1,6 +1,58 @@
-#!/usr/bin/env narwhal
+var jsc = require("./jsc");
 
-load("jsc.js");
+hello_world = ["call", "println", ["string", "Hello, world!"]];
+hello_world_2_arg = ["call", "print2ln", ["string", "Hello,"],
+		     ["string", "World!"]];
+multiple_exprs = ["do", 
+		  ["call", "print", ["string", "Hello,"]],
+		  ["call", "print", ["string", " "]],
+		  ["call", "println", ["string", "World!"]]];
+subexprs = ["do", 
+	    ["call", "print", ["string", "'Hello world' takes "]],
+	    ["call", "print", ["call", "strlen", 
+			       ["string", "Hello world"]]],
+	    ["call", "println", ["string", "bytes."]]];
+
+defun = ["do",
+	 ["defun", "hello_world", [], 
+	  ["call", "println", ["string", "Hello, world!"]]],
+	 ["call", "hello_world"]];
+
+int_literal = ["call", "println", ["int", 11]];
+
+cond = ["do",
+	["if", ["int", 1],
+	 ["call", "println", ["string", "1 is true."]],
+	 ["call", "println", ["string", "wrong 1 is false."]]],
+	["if", ["int", 0],
+	 ["call", "println", ["string", "wrong 0 is true."]],
+	 ["call", "println", ["string", "0 is false."]]],
+	["if", ["string", ""],
+	 ["call", "println", ["string", "wrong \'\' is true."]],
+	 ["call", "println", ["string", "\'\' is false."]]],
+	["if", ["string", "Hello"],
+	 ["call", "println", ["string", "\'Hello\' is true."]],
+	 ["call", "println", ["string", "wrong \'Hello\' is false."]]]];
+
+lambda_usage = ["call", ["lambda", [],
+			 ["call", "println", 
+			  ["string", "Hello, world!"]]]];
+
+defun_args = ["do", 
+	      ["defun", "print_two_things", ["s1", "s2"],
+	       ["do", 
+		["call", "print", ["varget", "s1"]],
+		["call", "println", ["varget", "s2"]]]],
+	      ["call", "print_two_things", 
+	       ["string", "Hello, "],
+	       ["string", "World!"]]];
+
+assignment = ["do",
+	      ["assign", "f", ["int", 5]],
+	      ["call", "println", ["varget", "f"]],
+	      ["assign", "f", ["string", "Hello, there."]],
+	      ["call", "println", ["varget", "f"]]];
+
 
 var hello_world_result = 
   '#include "js_types.h"\n' +
@@ -10,7 +62,7 @@ var hello_world_result =
   'return 0;\n' +
   '}\n';
 function test_hello_world() {
-  if (compile(hello_world) == hello_world_result) {
+  if (jsc.compile(hello_world) == hello_world_result) {
     print("Hello world compiled correctly.");
     return true;
   } else {
@@ -27,7 +79,7 @@ var hello_world_2_arg_result =
   'return 0;\n' +
   '}\n';
 function test_hello_world_2_arg() {
-  if (compile(hello_world_2_arg) == hello_world_2_arg_result) {
+  if (jsc.compile(hello_world_2_arg) == hello_world_2_arg_result) {
     print("Multiple arguments compiled correctly.");
     return true;
   } else {
@@ -48,7 +100,7 @@ var multiple_exprs_result =
   'return 0;\n' +
   '}\n';
 function test_multiple_exprs() {
-  if (compile(multiple_exprs) == multiple_exprs_result) {
+  if (jsc.compile(multiple_exprs) == multiple_exprs_result) {
     print("Multiple expressions compiled correctly.");
     return true;
   } else {
@@ -70,7 +122,7 @@ var subexprs_result =
   'return 0;\n' +
   '}\n';
 function test_subexprs() {
-  if (compile(subexprs) == subexprs_result) {
+  if (jsc.compile(subexprs) == subexprs_result) {
     print("Subexpressions in function arguments compiled correctly.");
     return true;
   } else {
@@ -93,7 +145,7 @@ var defun_result =
   'js_println(js_create_string("Hello, world!"));\n' +
   '}\n';
 function test_defun() {
-  if (compile(defun) == defun_result) {
+  if (jsc.compile(defun) == defun_result) {
     print("Nullary function definition compiled correctly.");
     return true;
   } else {
@@ -110,7 +162,7 @@ var int_literal_result =
   'return 0;\n' +
   '}\n';
 function test_int_literal() {
-  if (compile(int_literal) == int_literal_result) {
+  if (jsc.compile(int_literal) == int_literal_result) {
     print("Int literal compiled correctly.");
     return true;
   } else {
@@ -140,7 +192,7 @@ var cond_result =
   'return 0;\n' +
   '}\n';
 function test_cond() {
-  if (compile(cond) == cond_result) {
+  if (jsc.compile(cond) == cond_result) {
     print("Conditionals compiled correctly.");
     return true;
   } else {
@@ -161,7 +213,7 @@ var lambda_usage_result =
   'js_println(js_create_string("Hello, world!"));\n' +
   '}\n';
 function test_lambda_usage() {
-  if (compile(lambda_usage) == lambda_usage_result) {
+  if (jsc.compile(lambda_usage) == lambda_usage_result) {
     print("Nullary lambda compiled correctly.");
     return true;
   } else {
@@ -190,7 +242,7 @@ var defun_args_result =
   '}\n' +
   '}\n';
 function test_defun_args() {
-  if (compile(defun_args) == defun_args_result) {
+  if (jsc.compile(defun_args) == defun_args_result) {
     print("Defun args compiled correctly.");
     return true;
   } else {
@@ -212,7 +264,7 @@ var assignment_result =
     'return 0;\n' +
     '}\n';
 function test_assignment() {
-    if (compile(assignment) == assignment_result) {
+    if (jsc.compile(assignment) == assignment_result) {
 	print("Assignment compiled correctly.");
 	return true;
     } else {

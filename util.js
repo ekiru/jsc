@@ -47,3 +47,12 @@ function objnconc(obj1, obj2) {
 function defined(o) {
   return o !== undefined;
 }
+
+if (typeof exports !== "undefined") {
+    exports.rest = rest;
+    exports.map = map;
+    exports.foreach = foreach;
+    exports.nconc = nconc;
+    exports.objnconc = objnconc;
+    exports.defined = defined;
+}

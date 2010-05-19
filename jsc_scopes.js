@@ -13,3 +13,7 @@ function Scope (parent) {
     }
 
 }
+
+if (typeof exports !== "undefined") {
+    exports.Scope = Scope;
+}

@@ -1,4 +1,6 @@
-load('grammar.js');
+var grammar = require('./grammar');
+
+var lex = require('jslex');
 
 function Parser (tokens) {
     this.tokens = tokens;
@@ -1175,9 +1177,17 @@ function Parser (tokens) {
 }
 
 function parseString(str) {
-    return new Parser(jsLex(lexicalGrammar, str)).program();
+    return new Parser(
+	lex.jsLex(grammar.lexicalGrammar, str)).program();
 }
 
 function parseFile(file) {
-    return new Parser(jsLex(lexicalGrammar, readFile(file))).program();
+    return new Parser(
+	lex.jsLex(grammar.lexicalGrammar, readFile(file))).program();
+}
+
+if (typeof exports !== "undefined") {
+    exports.Parser = Parser;
+    exports.parseString = parseString;
+    exports.parseFile = parseFile;
 }

@@ -1,5 +1,4 @@
-
-jsc_symbol_locations = { 
+exports.jsc_symbol_locations = { 
   /* Implementation details */
   "js_is_true" : "js_types.h",
 
@@ -17,7 +16,7 @@ jsc_symbol_locations = {
   "js_strlen" : "js_string.h"
 };
 
-jsc_builtins = { 
+exports.jsc_builtins = { 
   /* Implementation details */
   "is_true" : "js_is_true",
 
