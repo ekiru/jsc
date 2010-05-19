@@ -23,16 +23,16 @@ function compile (prog) {
 		    included_files[file] = true;
 		}
 	    });
-
-
+    
+    
     var declaration_text = "";
     var definition_text = "";
     util.foreach(functions_defined,
-	    function (func) {
-		declaration_text += func["declaration"];
-		definition_text += func["definition"];
-	    });
-
+		 function (func) {
+		     declaration_text += func["declaration"];
+		     definition_text += func["definition"];
+		 });
+    
     return include_text + declaration_text + main_text + definition_text;
 }
 
@@ -64,15 +64,16 @@ function compileProgram(prog, symbols_used, functions_defined, scope) {
 function compileDo(prog, symbols_used, functions_defined, scope) {
     var statements = util.rest(prog);
     var resultText = "{\n";
-
+    
     util.foreach(statements, 
-	    function (statement) {
-		var comp = compileProgram(statement,
-					  symbols_used, functions_defined, scope);
-		resultText += comp;
-	    });
+		 function (statement) {
+		     var comp = 
+			 compileProgram(statement, symbols_used,
+					functions_defined, scope);
+		     resultText += comp;
+		 });
     resultText += "}\n";
-
+    
     return resultText;
 }
 
@@ -85,22 +86,23 @@ function compileDefun(defun, symbols_used, functions_defined, scope) {
     }
     var args = defun[2];
     util.foreach(args, function (arg) {
-	    internalScope.bind(arg);
-	});
-
+	internalScope.bind(arg);
+    });
+    
     var body = defun[3];
     var signature = 
 	"void " + name +
 	"(" + util.map(args, function(str) {
-		return "struct js_value *" + str;
-	    }).join(", ") + ")";
-
+	    return "struct js_value *" + str;
+	}).join(", ") + ")";
+    
     var declText = signature + ";\n"
-	var defText = 
+    var defText = 
 	signature + " {\n" +
-	compileProgram(body, symbols_used, functions_defined, internalScope) +
+	compileProgram(body, symbols_used,
+		       functions_defined, internalScope) +
 	"}\n";
-  
+    
     functions_defined[name] = { "declaration" : declText,
 				"definition" : defText };
 }
@@ -109,14 +111,16 @@ function compileIf(cond, symbols_used, functions_defined, scope) {
     var condition = cond[1];
     var thenb = cond[2];
     var elseb = cond[3];
-
+    
     symbols_used.push(jsc_builtins["is_true"]);
     var text = 
 	("if (" + jsc_builtins["is_true"] + "(" + 
-	 compileExpr(condition, symbols_used, functions_defined, scope) + ")) " +
+	 compileExpr(condition, symbols_used, 
+		     functions_defined, scope) + ")) " +
 	 compileProgram(thenb, symbols_used, functions_defined, scope)) +
-	("else " + compileProgram(elseb, symbols_used, functions_defined, scope));
-
+	("else " + compileProgram(elseb, symbols_used, 
+				  functions_defined, scope));
+    
     return text;
 }
 
@@ -159,6 +163,7 @@ function compileAssign(expr, symbols_used, functions_defined, scope) {
 	return "struct js_value *" + assign;
     }
 }
+
 function compileCall(expr, symbols_used, functions_defined, scope) {
     var resultString = "";
     var func = expr[1];
@@ -166,7 +171,7 @@ function compileCall(expr, symbols_used, functions_defined, scope) {
     if (Array.isArray(func)) {
 	func = compileExpr(func, symbols_used, functions_defined, scope);
     }
-
+    
     if (jsc_builtins[func] !== undefined) {
 	resultString += jsc_builtins[func];
 	symbols_used.push(jsc_builtins[func]);
@@ -174,17 +179,18 @@ function compileCall(expr, symbols_used, functions_defined, scope) {
 	resultString += modules.moduleFunction("user", func);
     }
     resultString += "(";
- 
+    
     if (args.length > 0) {
 	util.foreach(args, 
-		function (arg) {
-		    var comp = compileExpr(arg, symbols_used, functions_defined, scope);
-		    resultString += comp + ",";
-		});
+		     function (arg) {
+			 var comp = compileExpr(arg, symbols_used,
+						functions_defined, scope);
+			 resultString += comp + ",";
+		     });
 	resultString = resultString.substring(0, resultString.length - 1);
     }
     resultString += ")";
- 
+    
     return resultString;
 }
 
@@ -194,7 +200,7 @@ function compileLambda(lambda, symbols_used, functions_defined, scope) {
     lambda_count++;
     compileDefun(["defun", name, lambda[1],
 		  lambda[2]], symbols_used, functions_defined, scope);
-
+    
     return name;
 }
 

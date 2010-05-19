@@ -11,7 +11,7 @@ function Scope (parent) {
     this.bind = function (name) {
 	this.names.push(name);
     }
-
+    
 }
 
 if (typeof exports !== "undefined") {

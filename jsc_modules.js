@@ -1,5 +1,5 @@
 function moduleFunction (module, fun) {
-  return module + "_" + fun;
+    return module + "_" + fun;
 }
 
 if (typeof exports !== "undefined") {

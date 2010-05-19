@@ -4,11 +4,11 @@ var lex = require('jslex');
 
 function Parser (tokens) {
     this.tokens = tokens;
-
+    
     this.getToken = function getToken () {
 	this.token = this.tokens.shift();
     }
-
+    
     this.peek = function peek() {
 	return this.token
     }
@@ -1189,5 +1189,5 @@ function parseFile(file) {
 if (typeof exports !== "undefined") {
     exports.Parser = Parser;
     exports.parseString = parseString;
-    exports.parseFile = parseFile;
+    exports.parseFile = parseFile; 
 }

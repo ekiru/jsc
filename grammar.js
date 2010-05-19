@@ -22,20 +22,20 @@ var reservedWordList = [
     "null",
     // Boolean literal
     "true", "false"
-    ];
+];
 
 var reservedWordLexicalGrammar = reservedWordList.map(function (word) {
-	return (new lex.TokenDef(RegExp(word), lex.TokenDef.identity));
-    });
+    return (new lex.TokenDef(RegExp(word), lex.TokenDef.identity));
+});
 
 var identifierRegex = 
     /([A-Za-z$_]|(\\u[0-9A-Fa-f]{4}))(([\w$_\d]|(\\u[0-9A-Fa-f]{4})))*/;
 
 var identifierLexicalGrammar = [
     new lex.TokenDef(identifierRegex, function (string) {
-	    return ["ident", string];
-	})
-    ];
+	return ["ident", string];
+    })
+];
 
 var decimalLiteral =
     /[-+]?(([0-9]+\.[0-9]*)|(\.[0-9]+)|([0-9]+))((e|E)([-+]?[0-9]+))?/;
@@ -57,18 +57,18 @@ var regularExpressionRegex =
 
 var literalLexicalGrammar = [
     new lex.TokenDef(numericLiteralRegex, function (string) {
-	    return ["number", parseFloat(string)];
-	}),
+	return ["number", parseFloat(string)];
+    }),
     new lex.TokenDef(doubleQuoteStringLiteralRegex, function (string) {
-	    return ["string", string];
-	}),
+	return ["string", string];
+    }),
     new lex.TokenDef(singleQuoteStringLiteralRegex, function (string) {
-	    return ["string", string];
-	}),
+	return ["string", string];
+    }),
     new lex.TokenDef(regularExpressionRegex, function (regex) {
-	    return ["regex", regex];
-	})
-    ];
+        return ["regex", regex];
+    })
+];
 
 var punctuators = [
     /\{/, /\}/, /\(/, /\)/, /\[/, /\]/,
@@ -87,11 +87,11 @@ var punctuators = [
     /!==/, /!=/, /!/,
     /\./, /;/, /,/,
     /\?/, /:/
-    ];
+];
 
 var punctuatorLexicalGrammar = punctuators.map(function (symb) {
-	return new lex.TokenDef(symb, lex.TokenDef.identity);
-    });
+    return new lex.TokenDef(symb, lex.TokenDef.identity);
+});
 
 var lexicalGrammar = commentLexicalGrammar.
     concat(reservedWordLexicalGrammar).
