@@ -1,6 +1,6 @@
-var config = require("./jsc_config");
-var modules = require("./jsc_modules");
-var scopes = require("./jsc_scopes");
+var config = require("./config");
+var modules = require("./modules");
+var scopes = require("./scopes");
 var util = require("./util");
 
 var jsc_symbol_locations = config.jsc_symbol_locations;
