@@ -1,4 +1,6 @@
+var ast = require('./ast');
 var grammar = require('./grammar');
+var util = require('./util');
 
 var lex = require('jslex');
 
@@ -22,39 +24,33 @@ function Parser (tokens) {
 	    return false;
 	}
     }
+    
+    this.acceptClass = function (cls) {
+	return function () {
+	    var tok = this.peek();
+	    if (util.isa(tok, cls)) {
+		this.getToken();
+		return tok;
+	    } else {
+		return false;
+	    }
+	};
+    };
 
     this.expect = function expect (nonterm) {
 	if (nonterm) {
 	    return nonterm;
 	} else {
-	    throw SyntaxError("in expect: unexpected " + this.peek() + " in " +
-		this.tokens);
+	    throw SyntaxError("in expect: unexpected " + this.peek() 
+			      + " in " + this.tokens);
 	}
     };
 
-    this.identifier = function identifier() {
-	var tok = this.peek();
-	if (Array.isArray(tok) && tok[0] == "ident") {
-	    this.getToken();
-	    return tok;
-	} else {
-	    return false;
-	}
-    };
+    this.identifier = this.acceptClass(ast.Identifier);
 
     this.acceptIdentifier = function acceptIdentifier(id) {
 	var tok = this.peek();
-	if (Array.isArray(tok) && tok[0] == "ident" && tok[1] == id) {
-	    this.getToken();
-	    return true;
-	} else {
-	    return false;
-	}
-    };
-
-    this.numberLiteral = function numberLiteral() {
-	var tok = this.peek();
-	if (Array.isArray(tok) && tok[0] == "number") {
+	if (util.isa(tok, ast.Identifier) && tok.name === id) {
 	    this.getToken();
 	    return tok;
 	} else {
@@ -62,43 +58,32 @@ function Parser (tokens) {
 	}
     };
 
-    this.regexLiteral = function regexLiteral() {
-	var tok = this.peek()
-	if (Array.isArray(tok) && tok[0] == "regex") {
+    this.acceptReservedWord = function (word) {
+	var tok = this.peek();
+	if (util.isa(tok, ast.ReservedWord(tok)) && tok.name === word) {
 	    this.getToken();
-	    return tok
+	    return tok;
 	} else {
 	    return false;
 	}
     }
 
-    this.stringLiteral = function stringLiteral() {
-	var tok = this.peek();
-	if (Array.isArray(tok) && tok[0] == "string") {
-	    this.getToken();
-	    return tok;
-	} else {
-	    return false;
-	}
-    };
+    this.booleanLiteral = this.acceptClass(ast.BooleanLiteral);
+
+    this.nullLiteral = this.acceptClass(ast.NullLiteral);
+
+    this.numberLiteral = this.acceptClass(ast.NumberLiteral);
+
+    this.regexLiteral = this.acceptClass(ast.RegularExpressionLiteral);
+
+    this.stringLiteral = this.acceptClass(ast.StringLiteral);
 
     this.literal = function literal() {
-	var result;
-	if (result = this.accept('null')) {
-	    return result;
-	} else if (result = this.accept('true')) {
-	    return result;
-	} else if (result = this.accept('false')) {
-	    return result;
-	} else if (result = this.numberLiteral()) {
-	    return result;
-	} else if (result = this.regexLiteral()) {
-	    return result;
-	} else if (result = this.stringLiteral()) {
-	    return result;
-	} else {
-	    return false;
-	}
+	return this.nullLiteral() ||
+	    this.booleanLiteral() ||
+	    this.numberLiteral() ||
+	    this.regexLiteral() ||
+	    this.stringLiteral();
     };
     
     this.elision = function elision() {
@@ -138,7 +123,7 @@ function Parser (tokens) {
 	    var length = 0;
 	    var rest;
 	    if (this.accept(']')) {
-		return ["array", [], 0];
+		return new ast.ArrayLiteral([], 0);
 	    } else if (beginElision = this.elision()) {
 		length = beginElision;
 		if (expr = this.assignmentExpression()) {
@@ -147,21 +132,18 @@ function Parser (tokens) {
 		    if (rest = this.elementListRest()) {
 			ary = ary.concat(rest);
 			length += rest.length;
-			this.expect(this.accept(']'));
-			return ["array", ary, length];
-		    } else {
-			this.expect(this.accept(']'));
-			return ["array", ary, length];
 		    }
+			this.expect(this.accept(']'));
+			return new ast.ArrayLiteral(ary, length);
 		}
 	    } else if (expr = this.assignmentExpression()) {
 		if (rest = this.elementListRest()) {
 		    ary = rest.shift(expr);
 		    this.expect(this.accept(']'));
-		    return ["array", ary, ary.length];
+		    return new ast.ArrayLiteral(ary, ary.length);
 		} else {
 		    this.except(this.accept(']'));
-		    return ["array", [expr], 1];
+		    return new ast.ArrayLiteral([expr], 1);
 		}
 	    } else {
 		throw SyntaxError("in arrayLiteral");
@@ -169,47 +151,39 @@ function Parser (tokens) {
 	} else {
 	    return false;
 	}
-    }
+    };
 
     this.propertyName = function propertyName() {
-	var result;
-	if (result = this.identifier()) {
-	    return result;
-	} else if (result = this.stringLiteral()) {
-	    return result;
-	} else if (result = this.numericLiteral()) {
-	    return result;
-	} else {
-	    return false;
-	}
+	return this.identifier()
+	    || this.stringLiteral()
+	    || this.numericLiteral();
     };
 
     this.propertyAssignment = function propertyAssignment() {
-	var name;
 	if (this.acceptIdentifier('get')) {
-	    name = this.propertyName();
+	    var name = this.propertyName();
 	    this.expect(this.accept('('));
 	    this.expect(this.accept(')'));
 	    this.expect(this.accept('{'));
 	    var body = this.expect(this.functionBody);
 	    this.expect(this.accept('}'));
-	    return ["get", name, body];
+	    return new ast.GetProperty(name, body);
 	} else if (this.acceptIdentifier('set')) {
-	    name = this.propertyName();
+	    var name = this.propertyName();
 	    this.expect(this.accept('('));
 	    var arg = this.expect(this.identifier());
 	    this.expect(this.accept(')'));
 	    this.expect(this.accept('{'));
 	    var body = this.expect(this.functionBody);
 	    this.expect(this.accept('}'));
-	    return ["set", name, arg, body];
+	    return new ast.SetProperty(name, arg, body);
 	} else {
 	    var name = (this.identifier() || this.stringLiteral() ||
 			this.numberLiteral());
 	    if (name) {
 		this.expect(this.accept(':'));
 		var val = this.expect(this.expression());
-		return ["property", name, val];
+		return new ast.Property(name, val);
 	    } else {
 		return false;
 	    }
@@ -228,7 +202,7 @@ function Parser (tokens) {
 	    }
 	    this.accept(',');
 	    if (this.accept('}')) {
-		return ["object", props];
+		return new ast.ObjectLiteral(props);
 	    } else {
 		throw SyntaxError("in objectLiteral: expected }");
 	    }
@@ -238,24 +212,17 @@ function Parser (tokens) {
     };
 
     this.primaryExpression = function primaryExpression () {
-	var result;
-	if (result = this.accept('this')) {
-	    return result;
-	} else if (result = this.identifier()) {
-	    return result;
-	} else if (result = this.literal()) {
-	    return result;
-	} else if (result = this.arrayLiteral()) {
-	    return result;
-	} else if (result = this.objectLiteral()) {
-	    return result;
-	} else if (this.accept('(')) {
-	    result = this.expression();
+	if  (this.accept('(')) {
+	    var result = this.expression();
 	    return this.accept(')') && result;
 	} else {
-	    return false;
+	    return this.acceptReservedWord("this")
+		|| this.identifier()
+		|| this.literal()
+		|| this.arrayLiteral()
+		|| this.objectLiteral();
 	}
-    }
+    };
 
     this.memberExpression = function memberExpression() {
 	var expr;
@@ -264,18 +231,14 @@ function Parser (tokens) {
 	    expr = this.expect(this.memberExpression());
 	    var args;
 	    if (args = this.argumentsList()) {
-		result = ['new', expr, args];
+		result = new ast.New(expr, args);
 		return this.memberExpressionRest(result) || result;
 	    } else {
-		return ['new', expr, []];
+		return new ast.New(expr);
 	    }
 	} else if ((expr = this.primaryExpression()) || 
 		   (expr = this.functionExpression())) {
-	    if (result = this.memberExpressionRest(expr)) {
-		return result;
-	    } else {
-		return expr;
-	    }
+	    return this.memberExpressionRest(expr) || expr;
 	} else {
 	    return false;
 	}
@@ -285,11 +248,12 @@ function Parser (tokens) {
 	if (this.accept('[')) {
 	    var indexExpr = this.expect(this.expression());
 	    this.expect(this.accept(']'));
-	    var result = ["subscript", firstE, indexExpr];
+	    var result = new ast.Subscript(firstE, indexExpr);
 	    return this.memberExpressionRest(result) || result;
 	} else if (this.accept('.')) {
-	    var propName = this.expect(this.identifier());
-	    var result = ["propertyGet", firstE, propName];
+	    var propName = this.expect(this.identifier()).name;
+	    var result = new ast.Subscript(firstE,
+					   new ast.StringLiteral(propName));
 	    return this.memberExpressionRest(result) || result;
 	} else {
 	    return false;
@@ -299,16 +263,17 @@ function Parser (tokens) {
     this.callExpressionRest = function callExpressionRest(first) {
 	var args;
 	if (args = this.argumentsList()) {
-	    var result = ["call", first, args];
+	    var result = new ast.Call(first, args);
 	    return this.callExpressionRest(result) || result;
 	} else if (this.accept('[')) {
 	    var expr = this.expect(this.expression());
 	    this.expect(this.accept(']'));
-	    var result = ["subscript", first, expr];
+	    var result = new ast.Subscript(first, expr);
 	    return this.callExpressionRest(result) || result;
 	} else if (this.accept('.')) {
-	    var prop = this.expect(this.identifier());
-	    var result = ["propertyGet", first, prop];
+	    var propName = this.expect(this.identifier()).name;
+	    var result = new ast.Subscript(first,
+					   new ast.StringLiteral(propName));
 	    return this.callExpressionRest(result) || result;
 	} else {
 	    return false;
@@ -350,9 +315,9 @@ function Parser (tokens) {
 	var expr;
 	if (expr = this.leftHandSideExpression()) {
 	    if (this.accept('++')) {
-		return ["post_increment", expr];
+		return new ast.PostIncrement(expr);
 	    } else if (this.accept('--')) {
-		return ["post_decrement", expr];
+		return new ast.PostDecrement(expr);
 	    } else {
 		return expr;
 	    }
@@ -366,23 +331,23 @@ function Parser (tokens) {
 	if (expr = this.postfixExpression()) {
 	    return expr;
 	} else if (this.accept('delete')) {
-	    return ['delete', this.expect(this.unaryExpression())];
+	    return new ast.Delete(this.expect(this.unaryExpression()));
 	} else if (this.accept('void')) {
-	    return ['void', this.expect(this.unaryExpression())];
+	    return new ast.Void(this.expect(this.unaryExpression()));
 	} else if (this.accept('typeof')) {
-	    return ['typeof', this.expect(this.unaryExpression())];
+	    return new ast.TypeOf(this.expect(this.unaryExpression()));
 	} else if (this.accept('++')) {
-	    return ['pre_increment', this.expect(this.unaryExpression())];
+	    return new ast.PreIncrement(this.expect(this.unaryExpression()));
 	} else if (this.accept('--')) {
-	    return ['pre_decrement', this.expect(this.unaryExpression())];
+	    return new ast.PreDecrement(this.expect(this.unaryExpression()));
 	} else if (this.accept('+')) {
-	    return ['unary_plus', this.expect(this.unaryExpression())];
+	    return new ast.UnaryPlus(this.expect(this.unaryExpression()));
 	} else if (this.accept('-')) {
-	    return ['unary_negate', this.expect(this.unaryExpression())];
+	    return new ast.UnaryMinus(this.expect(this.unaryExpression()));
 	} else if (this.accept('~')) {
-	    return ['unary_bitwise_not', this.expect(this.unaryExpression())];
+	    return new ast.BitwiseNot(this.expect(this.unaryExpression()));
 	} else if (this.accept('!')) {
-	    return ['unary_logical_not', this.expect(this.unaryExpression())];
+	    return new ast.LogicalNot(this.expect(this.unaryExpression()));
 	} else {
 	    return false;
 	}
@@ -391,15 +356,15 @@ function Parser (tokens) {
     this.multiplicativeExpressionRest = function multiplicativeExpressionRest(first) {
 	if (this.accept('*')) {
 	    var second = this.expect(this.unaryExpression());
-	    var result = ['mul', first, second];
+	    var result = new ast.Multiply(first, second);
 	    return this.multiplicativeExpressionRest(result) || result;
 	} else if (this.accept('/')) {
 	    var second = this.expect(this.unaryExpression());
-	    var result = ['div', first, second];
+	    var result = new ast.Divide(first, second);
 	    return this.multiplicativeExpressionRest(result) || result;
 	} else if (this.accept('%')) {
 	    var second = this.expect(this.unaryExpression());
-	    var result = ['mod', first, second];
+	    var result = new ast.Modulo(first, second);
 	    return this.multiplicativeExpressionRest(result) || result;
 	} else {
 	    return false;
@@ -413,10 +378,15 @@ function Parser (tokens) {
 
     this.additiveExpressionRest = function additiveExpressionRest(first) {
 	if (this.accept('+')) {
-	    var result = ["add", first, this.expect(this.multiplicativeExpression())];
+	    var result = 
+		new ast.Add(first, 
+			    this.expect(this.multiplicativeExpression()));
 	    return this.additiveExpressionRest(result) || result;
 	} else if (this.accept('-')) {
-	    var result = ["sub", first, this.expect(this.multiplicativeExpression())];
+	    var result = 
+		(new 
+		 ast.Subtract(first,
+			      this.expect(this.multiplicativeExpression())));
 	    return this.additiveExpressionRest(result) || result;
 	} else {
 	    return false;
@@ -435,15 +405,15 @@ function Parser (tokens) {
     this.shiftExpressionRest = function shiftExpressionRest(first) {
 	if (this.accept('<<')) {
 	    var second = this.additiveExpression();
-	    var result = ["shift_left", first, second];
+	    var result = new ast.ShiftLeft(first, second);
 	    return this.shiftExpressionRest(result) || result;
 	} else if (this.accept('>>')) {
 	    var second = this.additiveExpression();
-	    var result = ["shift_right", first, second];
+	    var result = new ast.SignedShiftRight(first, second);
 	    return this.shiftExpressionRest(result) || result;
 	} else if (this.accept('>>>')) {
 	    var second = this.additiveExpression();
-	    var result = ["shift_right_zero", first, second];
+	    var result = new ast.UnsignedShiftRight(first, second);
 	    return this.shiftExpressionRest(result) || result;
 	} else {
 	    return false;
@@ -462,27 +432,27 @@ function Parser (tokens) {
     this.relationalExpressionRest = function relationalExpressionRest(first, noIn) {
 	if (this.accept('<')) {
 	    var second = this.expect(this.shiftExpression());
-	    var result = ["less_than", first, second];
+	    var result = new ast.LessThan(first, second);
 	    return this.relationalExpressionRest(result, noIn) || result;
 	} else if (this.accept('>')) {
 	    var second = this.expect(this.shiftExpression());
-	    var result = ["greater_than", first, second];
+	    var result = new ast.GreaterThan(first, second);
 	    return this.relationalExpressionRest(result, noIn) || result;
 	} else if (this.accept('<=')) {
 	    var second = this.expect(this.shiftExpression());
-	    var result = ["less_than_or_equal", first, second];
+	    var result = new ast.LessThanOrEqual(first, second);
 	    return this.relationalExpressionRest(result, noIn) || result;
 	} else if (this.accept('>=')) {
 	    var second = this.expect(this.shiftExpression());
-	    var result = ["greater_than_or_equal", first, second];
+	    var result = new ast.GreaterThanOrEqual(first, second);
 	    return this.relationalExpressionRest(result, noIn) || result;
 	} else if (this.accept('instanceof')) {
 	    var second = this.expect(this.shiftExpression());
-	    var result = ["instanceof", first, second];
+	    var result = new ast.InstanceOf(first, second);
 	    return this.relationalExpressionRest(result, noIn) || result;
 	} else if (!noIn && this.accept('in')) {
 	    var second = this.expect(this.shiftExpression());
-	    var result = ["in", first, second];
+	    var result = new ast.In(first, second);
 	    return this.relationalExpressionRest(result, noIn) || result;
 	} else {
 	    return false;
@@ -501,19 +471,19 @@ function Parser (tokens) {
     this.equalityExpressionRest = function equalityExpressionRest(first, noIn) {
 	if (this.accept('==')) {
 	    var second = this.relationalExpression(noIn);
-	    var result = ["equal", first, second];
+	    var result = new ast.Equal(first, second);
 	    return this.equalityExpressionRest(result, noIn) || result;
 	} else if (this.accept('!=')) {
 	    var second = this.relationalExpression(noIn);
-	    var result = ["not_equal", first, second];
+	    var result = new ast.NotEqual(first, second);
 	    return this.equalityExpressionRest(result, noIn) || result;	
 	} else if (this.accept('===')) {
 	    var second = this.relationalExpression(noIn);
-	    var result = ["strict_equal", first, second];
+	    var result = new ast.StrictEqual(first, second);
 	    return this.equalityExpressionRest(result, noIn) || result;
 	} else if (this.accept('!==')) {
 	    var second = this.relationalExpression(noIn);
-	    var result = ["strict_not_equal", first, second];
+	    var result = new ast.StrictNotEqual(first, second);
 	    return this.equalityExpressionRest(result, noIn) || result;
 	} else {
 	    return false;
@@ -532,7 +502,7 @@ function Parser (tokens) {
     this.bitwiseAndExpressionRest = function (first, noIn) {
 	if (this.accept('&')) {
 	    var second = this.expect(this.equalityExpression());
-	    var result = ['bitwise_and', first, second];
+	    var result = ast.BitwiseAnd(first, second);
 	    return this.bitwiseAndExpressionRest(result, noIn) || result;
 	} else {
 	    return false;
@@ -551,7 +521,7 @@ function Parser (tokens) {
     this.bitwiseXorExpressionRest = function (first, noIn) {
 	if (this.accept('^')) {
 	    var second = this.expect(this.bitwiseAndExpression(noIn));
-	    var result = ['bitwise_xor', first, second];
+	    var result = new ast.BitwiseXor(first, second);
 	    return this.bitwiseXorExpressionRest(result, NoIn) || result;
 	} else {
 	    return false;
@@ -570,7 +540,7 @@ function Parser (tokens) {
     this.bitwiseOrExpressionRest = function (first, noIn) {
 	if (this.accept('|')) {
 	    var second = this.expect(this.bitwiseXorExpression(noIn));
-	    var result = ['bitwise_or', first, second];
+	    var result = new ast.BitwiseOr(first, second);
 	    return this.bitwiseOrExpressionRest(result, noIn) || result;
 	} else {
 	    return false;
@@ -589,7 +559,7 @@ function Parser (tokens) {
     this.logicalAndExpressionRest = function (first, noIn) {
 	if (this.accept('&&')) {
 	    var second = this.expect(this.bitwiseOrExpression(noIn));
-	    var result = ['logical_and', first, second];
+	    var result = new ast.LogicalAnd(first, second);
 	    return this.logicalAndExpressionRest(result, noIn) || result;
 	} else {
 	    return false;
@@ -608,7 +578,7 @@ function Parser (tokens) {
     this.logicalOrExpressionRest = function (first, noIn) {
 	if (this.accept('||')) {
 	    var second = this.expect(this.logicalAndExpression(noIn));
-	    var result = ['logical_or', first, second];
+	    var result = new ast.LogicalOr(first, second);
 	    return this.logicalOrExpressionRest(result, noIn) || result;
 	} else {
 	    return false;
@@ -631,7 +601,7 @@ function Parser (tokens) {
 		var thenBranch = this.expect(this.assignmentExpression(noIn));
 		this.expect(this.accept(':'));
 		var elseBranch = this.expect(this.assignmentExpression(noIn));
-		return ['cond', cond, thenBranch, elseBranch];
+		return new ast.Conditional(cond, thenBranch, elseBranch);
 	    } else {
 		return cond;
 	    }
@@ -642,29 +612,29 @@ function Parser (tokens) {
 
     this.assignmentOperator = function () {
 	if (this.accept('=')) {
-	    return 'assign';
+	    return ast.Assign;
 	} else if (this.accept('+=')) {
-	    return 'aug_assign_add';
+	    return ast.AddAssign;
 	} else if (this.accept('-=')) {
-	    return 'aug_assign_sub';
+	    return ast.SubtractAssign;
 	} else if (this.accept('*=')) {
-	    return 'aug_assign_mul';
+	    return ast.MultiplyAssign;
 	} else if (this.accept('/=')) {
-	    return 'aug_assign_div';
+	    return ast.DivideAssign;
 	} else if (this.accept('%=')) {
-	    return 'aug_assign_mod';
+	    return ast.ModuloAssign;
 	} else if (this.accept('<<=')) {
-	    return 'aug_assign_left_shift';
+	    return ast.LeftShiftAssign;
 	} else if (this.accept('>>=')) {
-	    return 'aug_assign_right_shift';
+	    return ast.SignedRightShiftAssign;
 	} else if (this.accept('>>>=')) {
-	    return 'aug_assign_right_shift_zero';
+	    return ast.UnsignedRightShiftAssign;
 	} else if (this.accept('&=')) {
-	    return 'aug_assign_bitwise_and';
+	    return ast.BitwiseAndAssign;
 	} else if (this.accept('^=')) {
-	    return 'aug_assign_bitwise_xor';
+	    return ast.BitwiseXorAssign;
 	} else if (this.accept('|=')) {
-	    return 'aug_assign_bitwise_or';
+	    return ast.BitwiseOrAssign;
 	} else {
 	    return false;
 	};
@@ -673,10 +643,10 @@ function Parser (tokens) {
     this.assignmentExpression = function (noIn) {
 	var expr;
 	if (expr = this.conditionalExpression(noIn)) {
-	    var op;
-	    if (op = this.assignmentOperator()) {
+	    var opConstr;
+	    if (opConstr = this.assignmentOperator()) {
 		var val = this.expect(this.assignmentExpression(noIn));
-		return [op, expr, val];
+		return opConstr(expr, val);
 	    } else {
 		return expr;
 	    }
@@ -687,22 +657,17 @@ function Parser (tokens) {
 
     this.expression = function (noIn) {
 	var expr = this.assignmentExpression(noIn);
-	if (expr) {
-	    var exprs = [expr];
-	    var hasMultiple = false;
-	    while (this.accept(',')) {
-		hasMultiple = true;
-		exprs.push(this.expect(this.assignmentExpression(noIn)));
-	    }
-	    if (hasMultiple) {
-		exprs.shift('comma');
-		return exprs;
-	    } else {
-		return expr;
-	    }
-	} else {
+	var result = expr;
+	if (!expr) {
 	    return false;
 	}
+	while (this.accept(',')) {
+	    result = 
+		(new 
+		 ast.Comma(result,
+			   this.expect(this.assignmentExpression(noIn))));
+	}
+	return result;	
     };
 
     this.debuggerStatement = function () {
@@ -849,58 +814,149 @@ function Parser (tokens) {
 	}
     };
 
-    this.withStatement = function () {
-	if (this.accept('with')) {
+    this.statementListRest = function (firstStatements) {
+	var nextSt;
+	if (nextSt = this.statement()) {
+	    var result = firstStatements.concat([nextSt]);
+	    return this.statementListRest(result) || result;
+	} else {
+	    return false;
+	}
+    };
+
+    this.statementList = function () {
+	var st;
+	if (st = this.statement()) {
+	    var result = [st];
+	    return this.statementListRest(result) || result;
+	} else {
+	    return false;
+	}
+    };
+
+    this.statement = function () {
+
+	return (this.block() ||
+		this.variableStatement() ||
+		this.emptyStatement() ||
+		this.expressionStatement() ||
+		this.ifStatement() ||
+		this.iterationStatement() ||
+		this.continueStatement() ||
+		this.breakStatement() ||
+		this.returnStatement() ||
+		this.withStatement() ||
+		this.labelledStatement() ||
+		this.switchStatement() ||
+		this.throwStatement() ||
+		this.tryStatement() ||
+		this.debuggerStatement());	
+    };
+
+    this.block = function () {
+	if (this.accept('{')) {
+	    var result = new ast.Block(this.statementList() || []);
+	    this.expect('}');
+	    return result;
+	} else {
+	    return false;
+	}
+    };
+
+    this.variableStatement = function () {
+	if (this.acceptReservedWord("var")) {
+	    var decls = this.variableDeclarationList();
+	    this.expect(this.accept(';'));
+	    return new ast.VariableStatement(decls);
+	} else {
+	    return false;
+	}
+    };
+
+    this.variableDeclarationList = function (noIn) {
+	var decl = this.variableDeclaration(noIn);
+	if (decl) {
+	    return this.variableDeclarationListRest([decl], noIn) || decl;
+	} else {
+	    return false;
+	}
+    };
+
+    this.variableDeclarationListRest = function (earlierDecls, noIn) {
+	if (this.accept(',')) {
+	    var nextDecl = this.expect(this.variableDeclaration(noIn));
+	    var result = earlierDecls.push(nextDecl);
+	    return this.variableDeclarationListRest(result, noIn) || result;
+	} else {
+	    return false;
+	}
+    };
+
+    this.variableDeclaration = function (noIn) {
+	var id = this.identifier();
+	if (id) {
+	    var init = this.initialiser(noIn);
+	    if (init) {
+		return new ast.VariableDeclaration(id, init);
+	    } else {
+		return new ast.VariableDeclaration(id);
+	    }
+	} else {
+	    return false;
+	}
+    };
+
+    this.initialiser = function (noIn) {
+	if (this.accept('=')) {
+	    return this.expect(this.assignmentExpression(noIn));
+	} else {
+	    return false;
+	}
+    };
+
+    this.emptyStatement = function () {
+	return this.accept(';') && new ast.Empty();
+    };
+
+    this.expressionStatement = function () {
+	var tok = this.peek();
+	var expr;
+	if (tok === "{") {
+	    return false;
+	}
+	if (util.isa(tok, ast.ReservedWord) && tok.name === "function") {
+	    return false;
+	}
+	if (expr = this.expression()) {
+	    this.expect(this.accept(';'));
+	    return new ast.ExpressionStatement(expr);
+	} else {
+	    return false;
+	}
+    };
+
+    this.ifStatement = function () {
+	if (this.accept('if')) {
 	    this.expect(this.accept('('));
-	    var expr = this.expect(this.expression());
+	    var cond = this.expect(this.expression());
 	    this.expect(this.accept(')'));
-	    var statement = this.expect(this.statement());
-	    return ['with', expr, statement];
-	} else {
-	    return false;
-	}
-    };
-
-    this.returnStatement = function () {
-	if (this.accept('return')) {
-	    var expr = this.expression();
-	    this.expect(this.accept(';'));
-	    if (expr) {
-		return ['return', expr];
+	    var thenBlock = this.expect(this.statement());
+	    if (this.accept('else')) {
+		return new ast.If(cond,
+				  thenBlock,
+				  this.expect(this.statement()));
 	    } else {
-		return ['return'];
+		return new ast.If(cond, thenBlock);
 	    }
 	} else {
 	    return false;
 	}
     };
 
-    this.breakStatement = function () {
-	if (this.accept('break')) {
-	    var id = this.identifier();
-	    this.expect(this.accept(';'));
-	    if (id) {
-		return ['break', id];
-	    } else {
-		return ['break'];
-	    }
-	} else {
-	    return false;
-	}
-    };
-
-    this.continueStatement = function () {
-	if (this.accept('continue')) {
-	    var id = this.identifier();
-	    this.expect(this.accept(';'));
-	    if (id) {
-		return ['continue', id];
-	    } else {
-		return ['continue'];
-	    }
-	} else {
-	    return false;
-	}
+    this.iterationStatement = function () {
+	return this.doStatement()
+	    || this.whileStatement()
+	    || this.forStatement();
     };
 
     this.doStatement = function () {
@@ -911,7 +967,7 @@ function Parser (tokens) {
 	    var cond = this.expect(this.expression());
 	    this.expect(this.accept(')'));
 	    this.expect(this.accept(';'));
-	    return ['do', body, cond];
+	    return new ast.Do(body, cond);
 	} else {
 	    return false;
 	}
@@ -923,7 +979,7 @@ function Parser (tokens) {
 	    var cond = this.expect(this.expression());
 	    this.expect(this.accept(')'));
 	    var body = this.expect(this.statement());
-	    return ['while', cond, body];
+	    return new ast.While(cond, body);
 	} else {
 	    return false;
 	}
@@ -956,150 +1012,67 @@ function Parser (tokens) {
 	    this.expect(this.accept(')'));
 	    body = this.expect(this.statement());
 	    if (isForIn) {
-		return ['forin', [init, container], cond, step,
-			body];
+		return new ast.ForIn(init, container, cond, step, body);
 	    } else {
-		return ['for', init, cond, step,
-			body];
+		return new ast.For(init, cond, step, body);
 	    }
 	} else {
 	    return false;
 	}
     };
 
-    this.iterationStatement = function () {
-	return this.doStatement() || this.whileStatement() || this.forStatement();
+    this.continueStatement = function () {
+	if (this.accept('continue')) {
+	    var id = this.identifier();
+	    this.expect(this.accept(';'));
+	    if (id) {
+		return new ast.Continue(id);
+	    } else {
+		return new ast.Continue();
+	    }
+	} else {
+	    return false;
+	}
     };
 
-    this.ifStatement = function () {
-	if (this.accept('if')) {
+    this.breakStatement = function () {
+	if (this.accept('break')) {
+	    var id = this.identifier();
+	    this.expect(this.accept(';'));
+	    if (id) {
+		return new ast.Break(id);
+	    } else {
+		return new ast.Break();
+	    }
+	} else {
+	    return false;
+	}
+    };
+
+    this.returnStatement = function () {
+	if (this.accept('return')) {
+	    var expr = this.expression();
+	    this.expect(this.accept(';'));
+	    if (expr) {
+		return new ast.Return(expr);
+	    } else {
+		return new ast.Return();
+	    }
+	} else {
+	    return false;
+	}
+    };
+
+    this.withStatement = function () {
+	if (this.accept('with')) {
 	    this.expect(this.accept('('));
-	    var cond = this.expect(this.expression());
+	    var expr = this.expect(this.expression());
 	    this.expect(this.accept(')'));
-	    var thenBlock = this.expect(this.statement());
-	    if (this.accept('else')) {
-		return ['if', cond, thenBlock, this.expect(this.statement())];
-	    } else {
-		return ['if', cond, thenBlock];
-	    }
+	    var statement = this.expect(this.statement());
+	    return new ast.With(expr, statement);
 	} else {
 	    return false;
 	}
-    };
-
-    this.expressionStatement = function () {
-	var t = this.peek();
-	var expr;
-	if (!(t in ['{', 'function']) && (expr = this.expression())) {
-	    this.expect(this.accept(';'));
-	    return ['expr', expr];
-	} else {
-	    return false;
-	}
-    };
-
-    this.emptyStatement = function () {
-	return this.accept(';') && ['empty'];
-    };
-
-    this.initialiser = function (noIn) {
-	if (this.accept('=')) {
-	    return this.expect(this.assignmentExpression(noIn));
-	} else {
-	    return false;
-	}
-    };
-
-    this.variableDeclaration = function (noIn) {
-	var id = this.identifier();
-	if (id) {
-	    var init = this.initialiser(noIn);
-	    if (init) {
-		return ['init', id, init];
-	    } else {
-		return id;
-	    }
-	} else {
-	    return false;
-	}
-    };
-
-    this.variableDeclarationList = function (noIn) {
-	var decl = this.variableDeclaration(noIn);
-	if (decl) {
-	    return this.variableDeclarationListRest([decl], noIn) || decl;
-	} else {
-	    return false;
-	}
-    };
-
-    this.variableDeclarationListRest = function (earlierDecls, noIn) {
-	if (this.accept(',')) {
-	    var nextDecl = this.expect(this.variableDeclaration(noIn));
-	    var result = earlierDecls.concat([nextDecl]);
-	    return this.variableDeclarationListRest(result, noIn) || result;
-	} else {
-	    return false;
-	}
-    };
-
-    this.variableStatement = function () {
-	if (this.accept('var')) {
-	    var decls = this.variableDeclarationList();
-	    this.expect(this.accept(';'));
-	    decls.unshift('declarations');
-	    return decls;
-	} else {
-	    return false;
-	}
-    };
-    
-    this.statementListRest = function (firstStatements) {
-	var nextSt;
-	if (nextSt = this.statement()) {
-	    var result = firstStatements.concat([nextSt]);
-	    return this.statementListRest(result) || result;
-	} else {
-	    return false;
-	}
-    };
-
-    this.statementList = function () {
-	var st;
-	if (st = this.statement()) {
-	    var result = [st];
-	    return this.statementListRest(result) || result;
-	} else {
-	    return false;
-	}
-    };
-
-    this.block = function () {
-	if (this.accept('{')) {
-	    var result = ['do'].concat(this.statementList());
-	    this.expect('}');
-	    return result;
-	} else {
-	    return false;
-	}
-    };
-
-    this.statement = function () {
-	return (this.block() ||
-		this.variableStatement() ||
-		this.emptyStatement() ||
-		this.expressionStatement() ||
-		this.ifStatement() ||
-		this.iterationStatement() ||
-		this.continueStatement() ||
-		this.breakStatement() ||
-		this.returnStatement() ||
-		this.withStatement() ||
-		this.labelledStatement() ||
-		this.switchStatement() ||
-		this.throwStatement() ||
-		this.tryStatement() ||
-		this.debuggerStatement());	
     };
 
     this.functionBody = function () {

@@ -22,7 +22,10 @@ function foreach(coll, func) {
     } else {
 	var x;
 	for (x in coll) {
-	    func(coll[x]);
+	    if (Object.prototype.hasOwnProperty.call(coll, x)
+		&& Object.prototype.propertyIsEnumerable.call(coll, x)) {
+		func(coll[x]);
+	    }
 	}
     }
 }
@@ -48,6 +51,10 @@ function defined(o) {
     return o !== undefined;
 }
 
+function isa(obj, constr) {
+    return typeof obj === "object" && obj instanceof constr;
+}
+
 if (typeof exports !== "undefined") {
     exports.rest = rest;
     exports.map = map;
@@ -55,4 +62,5 @@ if (typeof exports !== "undefined") {
     exports.nconc = nconc;
     exports.objnconc = objnconc;
     exports.defined = defined;
+    exports.isa = isa;
 }

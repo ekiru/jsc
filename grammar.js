@@ -1,3 +1,5 @@
+var ast = require("./ast");
+
 var lex = require('jslex');
 
 var multiLineCommentRegex = /\/\*(([^*]|(\*[^/]))*)\*+\//;
@@ -8,7 +10,7 @@ var commentLexicalGrammar = [
     new lex.TokenDef(singleLineCommentRegex, lex.TokenDef.ignore)
     ];
 
-var reservedWordList = [
+var reservedWordList = {
     "break", "case", "catch", "continue", "debugger", "default", "delete",
     "do", "else", "finally", "for", "function", "if", "in",
     "instanceof", "new", "return", "switch", "this", "throw", "try",
@@ -22,10 +24,22 @@ var reservedWordList = [
     "null",
     // Boolean literal
     "true", "false"
-];
+};
 
 var reservedWordLexicalGrammar = reservedWordList.map(function (word) {
-    return (new lex.TokenDef(RegExp(word), lex.TokenDef.identity));
+    return new lex.TokenDef(RegExp(word),
+			    function () {
+				switch (word) {
+				case "true":
+				    return new ast.BooleanLiteral(true);
+				case "false":
+				    return new ast.BooleanLiteral(false);
+				case "null":
+				    return new ast.NullLiteral();
+				default:
+				    return new ast.ReservedWord(word);
+				}
+			    });
 });
 
 var identifierRegex = 
@@ -33,7 +47,7 @@ var identifierRegex =
 
 var identifierLexicalGrammar = [
     new lex.TokenDef(identifierRegex, function (string) {
-	return ["ident", string];
+	return new ast.Identifier(string);
     })
 ];
 
@@ -55,18 +69,17 @@ var singleQuoteStringLiteralRegex =
 var regularExpressionRegex =
     /\/([^*\\/\[])?([^\\/\[]|(\\.)|(\[([^\]\\]|(\\.))*\]))*\/[a-zA-Z]*/;
 
+function stringConstr (str) {
+    return new ast.StringLiteral(str.splice(1, -1));
+}
 var literalLexicalGrammar = [
     new lex.TokenDef(numericLiteralRegex, function (string) {
-	return ["number", parseFloat(string)];
+	return new ast.NumberLiteral(parseFloat(string));
     }),
-    new lex.TokenDef(doubleQuoteStringLiteralRegex, function (string) {
-	return ["string", string];
-    }),
-    new lex.TokenDef(singleQuoteStringLiteralRegex, function (string) {
-	return ["string", string];
-    }),
+    new lex.TokenDef(doubleQuoteStringLiteralRegex, stringConstr),
+    new lex.TokenDef(singleQuoteStringLiteralRegex, stringConstr),
     new lex.TokenDef(regularExpressionRegex, function (regex) {
-        return ["regex", regex];
+        return new ast.RegularExpressionLiteral(regex);
     })
 ];
 
